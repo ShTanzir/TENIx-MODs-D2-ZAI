@@ -29,21 +29,19 @@ import android.widget.Toast;
 import java.io.InputStream;
 
 /**
- * TENIx MODs — OPEN DIALOG BOX
- * Square card with radius • White/Black auto dark-light theme • Purple border.
- * Spinning purple ring animation around logo (logo loaded from assets/logo.png).
- * Not dismissible — it ALWAYS shows until the user presses EXIT
- * (JOIN TELEGRAM opens https://t.me/TENIxMODs).
+ * TENIx MODs — OPEN DIALOG BOX (V2)
+ * FIX: dialog now CLOSES when user taps JOIN TELEGRAM (dismiss before opening link).
+ * Still non-dismissible by back-press / outside touch (only the 2 buttons close it).
  *
  * Hook: invoke-static {p0}, Lcom/TENIx/MODs/OpenDialogbox;->show(Landroid/app/Activity;)V
  */
 public class OpenDialogbox {
 
-    /* ============ CONFIG — searchable/editable in dex strings after build ==== */
+    /* ==== CONFIG — editable in dex strings after build ==== */
     public static String TELEGRAM_LINK = "https://t.me/TENIxMODs";
     public static String OPEN_NAME     = "TENIx MODs";
     public static String OPEN_DESC     = "Crafted mods & premium unlocks — smooth, clean, pure passion.";
-    /* ========================================================================= */
+    /* ====================================================== */
 
     private static final int PURPLE = 0xFF7C3AED;
 
@@ -55,7 +53,6 @@ public class OpenDialogbox {
         final int text = dark ? 0xFFF3F3F5 : 0xFF141418;
         final int sub  = dark ? 0xFF9A9AA5 : 0xFF5A5A66;
 
-        /* ---------------- rounded card with purple border ---------------- */
         GradientDrawable cardBg = new GradientDrawable();
         cardBg.setColor(bg);
         cardBg.setCornerRadius(dp(activity, 26));
@@ -68,7 +65,7 @@ public class OpenDialogbox {
         int p = dp(activity, 24);
         card.setPadding(p, p + dp(activity, 8), p, p);
 
-        /* ---------------- logo + spinning purple ring ---------------- */
+        /* ---------- logo + spinning purple ring ---------- */
         FrameLayout logoArea = new FrameLayout(activity);
         logoArea.addView(new SpinRing(activity),
                 new FrameLayout.LayoutParams(dp(activity, 116), dp(activity, 116)));
@@ -87,7 +84,7 @@ public class OpenDialogbox {
         card.addView(logoArea, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        /* ---------------- name + description ---------------- */
+        /* ---------- name + description ---------- */
         TextView name = new TextView(activity);
         name.setText(OPEN_NAME);
         name.setTextColor(text);
@@ -108,7 +105,7 @@ public class OpenDialogbox {
         dlp.topMargin = dp(activity, 8);
         card.addView(desc, dlp);
 
-        /* ---------------- buttons ---------------- */
+        /* ---------- buttons ---------- */
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -124,8 +121,17 @@ public class OpenDialogbox {
         rlp.topMargin = dp(activity, 22);
         card.addView(row, rlp);
 
+        /* ---------- dialog created FIRST so buttons can dismiss it ---------- */
+        final Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setContentView(buildOuter(activity, card));
+
+        /* ---- FIX #1: dismiss dialog BEFORE opening Telegram ---- */
         join.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
+                try { dialog.dismiss(); } catch (Throwable ignored) {}
                 try {
                     activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(TELEGRAM_LINK)));
                 } catch (Throwable t) {
@@ -134,22 +140,9 @@ public class OpenDialogbox {
             }
         });
         exit.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                exitApp(activity);
-            }
+            @Override public void onClick(View v) { exitApp(activity); }
         });
 
-        /* ---------------- outer padding + dialog ---------------- */
-        FrameLayout outer = new FrameLayout(activity);
-        outer.setPadding(dp(activity, 22), dp(activity, 22), dp(activity, 22), dp(activity, 22));
-        outer.addView(card, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        Dialog dialog = new Dialog(activity);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setCancelable(false);              // ← ALWAYS shows until EXIT
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.setContentView(outer);
         Window w = dialog.getWindow();
         if (w != null) {
             w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -157,6 +150,14 @@ public class OpenDialogbox {
             w.setGravity(Gravity.CENTER);
         }
         dialog.show();
+    }
+
+    private static View buildOuter(Activity a, View card) {
+        FrameLayout outer = new FrameLayout(a);
+        outer.setPadding(dp(a, 22), dp(a, 22), dp(a, 22), dp(a, 22));
+        outer.addView(card, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return outer;
     }
 
     /* ============================ helpers ============================ */
@@ -169,14 +170,8 @@ public class OpenDialogbox {
         b.setTypeface(Typeface.DEFAULT_BOLD);
         GradientDrawable g = new GradientDrawable();
         g.setCornerRadius(dp(a, 14));
-        if (filled) {
-            g.setColor(PURPLE);
-            b.setTextColor(Color.WHITE);
-        } else {
-            g.setColor(Color.TRANSPARENT);
-            g.setStroke(dp(a, 2), PURPLE);
-            b.setTextColor(PURPLE);
-        }
+        if (filled) { g.setColor(PURPLE); b.setTextColor(Color.WHITE); }
+        else { g.setColor(Color.TRANSPARENT); g.setStroke(dp(a, 2), PURPLE); b.setTextColor(PURPLE); }
         b.setBackground(g);
         return b;
     }
@@ -188,12 +183,12 @@ public class OpenDialogbox {
             g.setColor((PURPLE & 0x00FFFFFF) | 0x14000000);
             g.setCornerRadius(dp(a, 12));
             iv.setBackground(g);
-            iv.setClipToOutline(true);            // rounded-square logo (API 21+)
+            iv.setClipToOutline(true);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             iv.setImageBitmap(bmp);
             return iv;
         }
-        TextView tv = new TextView(a);            // fallback logo if assets/logo.png missing
+        TextView tv = new TextView(a);
         GradientDrawable g = new GradientDrawable();
         g.setColor(PURPLE);
         g.setCornerRadius(dp(a, 12));
@@ -208,13 +203,11 @@ public class OpenDialogbox {
 
     private static Bitmap loadLogo(Activity a) {
         try {
-            InputStream is = a.getAssets().open("logo.png");   // ← assets/logo.png
+            InputStream is = a.getAssets().open("logo.png");
             Bitmap b = BitmapFactory.decodeStream(is);
             try { is.close(); } catch (Throwable ignored) {}
             return b;
-        } catch (Throwable t) {
-            return null;
-        }
+        } catch (Throwable t) { return null; }
     }
 
     private static boolean isDarkMode(Activity a) {
@@ -230,13 +223,11 @@ public class OpenDialogbox {
     private static void exitApp(final Activity a) {
         try { a.finishAffinity(); } catch (Throwable ignored) {}
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
-            @Override public void run() {
-                android.os.Process.killProcess(android.os.Process.myPid());
-            }
+            @Override public void run() { android.os.Process.killProcess(android.os.Process.myPid()); }
         }, 200);
     }
 
-    /* ================= spinning purple ring around the logo ================= */
+    /* ================= spinning purple ring ================= */
     private static class SpinRing extends View {
         private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint arc   = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -261,7 +252,7 @@ public class OpenDialogbox {
             canvas.drawArc(rect, 0f, 360f, false, track);
             float angle = (System.currentTimeMillis() % 1600L) / 1600f * 360f;
             canvas.drawArc(rect, angle, 285f, false, arc);
-            postInvalidateOnAnimation();          // continuous smooth rotation
+            postInvalidateOnAnimation();
         }
     }
 }
