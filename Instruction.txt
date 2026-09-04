@@ -1,126 +1,55 @@
 ============================================================
- TENIx MODs D2 ZAI — INSTRUCTION FILE
- OpenDialogbox + UpdateDialogbox (Pure Java, No XML, Firebase REST)
+ TENIx MODs D2 ZAI — V2 INSTRUCTION FILE
 ============================================================
 
-1) WHAT'S INSIDE
-   - MainActivity.java       → generates the 2 smali hook lines (deleted after build)
-   - OpenDialogbox.java      → shows every launch (Telegram + Exit, non-dismissible)
-   - UpdateDialogbox.java    → shows ONLY when admin calls UPDATE (via Firebase)
-   - index.html              → Admin Panel (add app / delete / CALL UPDATE)
-   - .github/workflows/build.yml → builds APK automatically on GitHub
+WHAT'S NEW IN V2
+  ✦ FIX: Open dialog now CLOSES when user taps JOIN TELEGRAM.
+  ✦ FIX: CALL UPDATE works EVERY time (fresh calledAt timestamp each press
+         → each press = a NEW notification with unique ID).
+  ✦ FIX: Notification image — https forced, LargeIcon + BigPictureStyle,
+         waits for Android 13 permission (auto-retry 4x).
+  ✦ NEW: 15-second LIVE polling — admin presses CALL UPDATE while the app
+         is open → notification + dialog appear within seconds. No restart.
+  ✦ NEW: Host app's own icon used as the notification small icon.
+  ✦ NEW: Admin Panel V2 — native-app UI (bottom nav, sheets, FAB) with
+         16+ features (PIN lock, theme, search, sort, history, live preview,
+         duplicate, edit, bulk ON/OFF, auto-refresh, export/import, tools…).
 
-2) HOW TO BUILD (GitHub Actions)
-   - Create a GitHub repo → upload all files keeping the folder structure.
-   - Put your logo.png inside  app/src/main/assets/logo.png
-     (if you don't, the workflow auto-creates a placeholder purple "T" logo).
-   - Go to Actions tab → workflow runs automatically → open the run →
-     download artifact "TENIx-MODs-D2-ZAI-APKs" (debug + release APKs).
+1) BUILD
+   Push to GitHub → Actions builds → download from Releases.
+   Put your logo at  app/src/main/assets/logo.png
 
-3) PERMISSION CODE — add inside <manifest> of your TARGET apk
-   (AndroidManifest.xml, before the <application> tag):
-
+2) TARGET APK — AndroidManifest.xml (before <application>):
    <uses-permission android:name="android.permission.INTERNET"/>
    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+   ⚠ NEVER write "android:targetApi" in any manifest (aapt error).
 
-   ⚠ NEVER write "android:targetApi" in any manifest.
-     aapt error: "Invalid instruction 'targetApi'" comes only from that.
-     Target SDK is set in build.gradle (targetSdk 34) — already done here.
-
-4) HOOK CODES (copy from MainActivity.smali after extracting Classes.dex)
-
+3) HOOK LINES (from MainActivity.smali → paste in target Activity onCreate):
    invoke-static {p0}, Lcom/TENIx/MODs/OpenDialogbox;->show(Landroid/app/Activity;)V
-
    invoke-static {p0}, Lcom/TENIx/MODs/UpdateDialogbox;->show(Landroid/app/Activity;)V
 
-   Paste BOTH lines inside your target Activity's onCreate method,
-   after "invoke-super ...->onCreate(...)" and before "return-void".
-   The 3 dialog classes intentionally live in package "com.TENIx.MODs"
-   so the smali path is exactly Lcom/TENIx/MODs/...
+4) DEX STRING REPLACEMENT (MT Manager → dex → strings):
+   REPLACE_FIREBASE_REALTIME_DB_URL → https://your-project-default-rtdb.firebaseio.com/
+   REPLACE_FIREBASE_DB_SECRET       → your DB secret (optional if rules public)
 
-5) DEX STRING REPLACEMENT (open Classes.dex → strings in MT Manager)
+5) FIREBASE RULES:
+   { "rules": { "apps": { ".read": true, ".write": "auth != null" } } }
 
-   Search:  REPLACE_FIREBASE_REALTIME_DB_URL
-   Replace: https://your-project-default-rtdb.firebaseio.com/
+6) HOW THE UPDATE FLOW WORKS (V2)
+   • App launch        → instant Firebase check → dialog (+ notification if new).
+   • App running       → checks every 15s → CALL UPDATE shows notification
+                         + dialog within ~15 seconds. NO app restart needed.
+   • App fully closed  → notification appears on next launch (instant).
+     (True push while closed needs FCM — impossible for injected dex.)
 
-   Search:  REPLACE_FIREBASE_DB_SECRET        (optional)
-   Replace: your legacy database secret — or leave the placeholder
-            if your database rules are public for read.
+7) IMPORTANT
+   • Notification image URL MUST be https:// (panel auto-fixes http).
+   • Admin panel → open app → UPDATE → CALL UPDATE (press as many times
+     as you want — every press fires a fresh notification).
+   • Turn OFF stops the dialog but devices keep the last notification.
+   • Update history (last calls) is stored in apps/{pkg}/history.
 
-   Also editable (optional):
-   https://t.me/TENIxMODs   → your Telegram link
-   TENIx MODs               → open-dialog name text
-
-6) FIREBASE SETUP
-   - Firebase Console → Realtime Database → create DB → copy the URL.
-   - Recommended rules (app can READ, only admin can WRITE):
-
-     {
-       "rules": {
-         "apps": {
-           ".read": true,
-           ".write": "auth != null"
-         }
-       }
-     }
-
-   - For ".write": "auth != null" you need a legacy Database Secret:
-     Project Settings → Service accounts → Database secrets.
-     Put that secret in the admin panel (and/or in the dex string).
-
-7) ADMIN PANEL (index.html — just open it in any browser)
-   - Save your Database URL (+ secret) → Save & Connect.
-   - Add New App: name, package id, about, icon URL → Add App.
-   - Click the app → UPDATE App → fill:
-       Version, Release Date, UPDATE URL (required),
-       Notification Image URL, Short Description, Features (one per line).
-   - Press  📢 CALL UPDATE  → database gets  apps/{pkg}/update/active = true.
-   - Every injected app shows UpdateDialogbox + Notification on next launch.
-   - Press  ⏹ Turn OFF Update  to stop showing it.
-   - Delete App removes the whole app entry.
-
-   Firebase JSON structure (created automatically by the panel):
-
-   apps
-    └── com_example_app            ← packageId, dots replaced with "_"
-         ├── appName, packageId, about, iconUrl, createdAt
-         └── update
-              ├── active      : true / false
-              ├── version     : "1.0.5"
-              ├── releaseDate : "September 25, 2025"
-              ├── description : "short text for the notification"
-              ├── features    : "line1\nline2\nline3"   (✦ added automatically)
-              ├── updateUrl   : "https://..."           ← UPDATE button opens this
-              └── imageUrl    : "https://..."           ← notification big image
-
-8) MT MANAGER WORKFLOW (full injection steps)
-   1. Build this project → get APK from GitHub Actions artifact.
-   2. Open the APK in MT Manager → extract Classes.dex and assets/.
-   3. Open Classes.dex → strings → replace the 2 firebase strings (step 5).
-   4. Open smali → MainActivity.smali → copy the 2 hook lines (step 4).
-   5. DELETE MainActivity.smali from the dex → save dex.
-   6. Open your TARGET apk → inject the edited dex + put logo.png in assets/.
-   7. Add the 3 permissions to the target AndroidManifest.xml (step 3).
-   8. Paste the 2 hook lines into the target Activity onCreate.
-   9. Rebuild + sign the target APK → install → done.
-   - OpenDialogbox shows on every launch.
-   - UpdateDialogbox + Notification appear after CALL UPDATE from the panel.
-
-9) STABILITY GUARANTEES (no crash / no crack)
-   - All network + JSON + dialog code is wrapped in try/catch (Throwable).
-   - No internet / wrong URL / bad JSON → the app simply continues normally.
-   - Android 13+ notification permission is auto-requested; if denied,
-     the dialog still shows (only the notification is skipped).
-   - Dialogs never show on finishing activities; double-show is blocked.
-
-10) THEME
-   - Both dialogs auto-detect system Dark/Light mode.
-   - Light: white bg, black text | Dark: near-black bg, white text.
-   - Purple (#7C3AED) border, buttons and ✦ bullets in both modes.
-
-11) LOGO
-   - Path in project:  app/src/main/assets/logo.png
-   - Change this one file anytime — BOTH dialogs update automatically.
-   - If missing, a fallback purple "T" logo is shown (no crash).
+8) STABILITY — all network/JSON/UI code is try/catch protected.
+   The host app can NEVER crash from this module. Guaranteed.
 ============================================================
