@@ -2,155 +2,328 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TENIx MODs • Update Admin Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>TENIx MODs • Update Panel V2</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
-:root{--purple:#7C3AED;--purple2:#9B5CFF;--bg:#0A0A0F;--card:#14141C;--card2:#1B1B26;--line:#26262F;--text:#F2F2F5;--sub:#9A9AA5}
-body{background:var(--bg);color:var(--text);min-height:100vh;padding:24px 18px 60px}
-.wrap{max-width:980px;margin:0 auto}
-h1{font-size:22px}.head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-h1 span{color:var(--purple2)}
-.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}
-.tag{color:var(--sub);font-size:13px;margin-bottom:22px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px}
-.card h2{font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.dot{width:9px;height:9px;border-radius:50%;background:#ef4444;display:inline-block}
-.dot.on{background:#22c55e}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-label{font-size:12px;color:var(--sub);display:block;margin:10px 0 5px}
-input,textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;outline:none}
-input:focus,textarea:focus{border-color:var(--purple)}
-textarea{min-height:90px;resize:vertical;line-height:1.5}
-.btn{border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;color:#fff;background:var(--purple);transition:.15s}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+:root{--purple:#7C3AED;--purple2:#A78BFA;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b}
+body.dark{--bg:#0A0A0F;--card:#14141C;--card2:#1B1B26;--line:#262633;--text:#F2F2F5;--sub:#9A9AA5;--shadow:0 6px 22px rgba(0,0,0,.45)}
+body.light{--bg:#F1F2F6;--card:#ffffff;--card2:#F5F5FA;--line:#E4E4EE;--text:#17171C;--sub:#6A6A78;--shadow:0 6px 22px rgba(30,30,60,.10)}
+body{background:var(--bg);color:var(--text);min-height:100vh;transition:background .25s,color .25s}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:30;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.hleft{display:flex;align-items:center;gap:11px}
+.logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#7C3AED,#4c1d95);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff;flex:none}
+header h1{font-size:16px}header h1 span{color:var(--purple2)}
+.conn{font-size:11px;color:var(--sub);display:flex;align-items:center;gap:6px;margin-top:2px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bad);display:inline-block}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.tbtn{background:var(--card2);border:1px solid var(--line);border-radius:10px;width:38px;height:38px;font-size:17px;color:var(--text)}
+
+/* ---------- nav ---------- */
+.nav{position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--card);border-top:1px solid var(--line);display:flex;z-index:40;padding-bottom:env(safe-area-inset-bottom)}
+.nav button{flex:1;background:none;border:none;color:var(--sub);font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.nav button .ic{font-size:19px}
+.nav button.active{color:var(--purple)}
+main{max-width:880px;margin:0 auto;padding:16px 14px 90px}
+.page{display:none}.page.active{display:block;animation:fade .22s}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- common ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+h2.sec{font-size:14.5px;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+label{font-size:11.5px;color:var(--sub);display:block;margin:10px 0 5px;font-weight:600}
+input,textarea,select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:11px;color:var(--text);padding:11px 12px;font-size:14px;outline:none;transition:.15s}
+input:focus,textarea:focus,select:focus{border-color:var(--purple)}
+textarea{min-height:84px;resize:vertical;line-height:1.55}
+.btn{border:none;border-radius:11px;padding:11px 18px;font-size:13.5px;font-weight:700;color:#fff;background:var(--purple);transition:transform .1s,filter .15s}
+.btn:active{transform:scale(.96)}
 .btn:hover{filter:brightness(1.12)}
-.btn.ghost{background:transparent;border:1px solid var(--purple);color:var(--purple2)}
-.btn.red{background:transparent;border:1px solid #ef4444;color:#ef4444}
-.btn.green{background:#14532d;border:1px solid #22c55e}
-.row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
-.apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:10px}
-.app{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:.15s}
+.btn.ghost{background:transparent;border:1.5px solid var(--purple);color:var(--purple2)}
+.btn.red{background:transparent;border:1.5px solid var(--bad);color:var(--bad)}
+.btn.green{background:var(--ok);color:#04120a}
+.btn.sm{padding:8px 13px;font-size:12px;border-radius:9px}
+.row{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+@media(max-width:420px){.grid2{grid-template-columns:1fr}}
+.badge{font-size:10.5px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--sub);font-weight:700}
+.badge.on{color:var(--ok);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08)}
+.badge.off{color:var(--bad);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)}
+.info{font-size:12.5px;color:var(--sub);line-height:1.65;background:var(--card2);border:1px dashed var(--line);border-radius:12px;padding:11px 13px;margin-top:12px}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px;overflow-x:auto;white-space:pre;color:var(--purple2)}
+
+/* ---------- stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:14px;box-shadow:var(--shadow)}
+.stat .n{font-size:23px;font-weight:800;color:var(--purple2)}
+.stat .l{font-size:11px;color:var(--sub);margin-top:3px;font-weight:600}
+
+/* ---------- apps grid ---------- */
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}
+.app{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:13px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
 .app:hover{border-color:var(--purple);transform:translateY(-2px)}
-.app img,.app .ph{width:52px;height:52px;border-radius:12px;object-fit:cover;background:var(--purple);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;flex:none}
-.badge{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--sub)}
-.badge.on{color:#4ade80;border-color:#166534}
-.badge.off{color:#f87171;border-color:#7f1d1d}
-.hidden{display:none}
-.info{font-size:13px;color:var(--sub);line-height:1.6;background:var(--card2);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:14px}
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);background:var(--purple);color:#fff;padding:11px 20px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;z-index:99;max-width:90vw}
+.app:active{transform:scale(.98)}
+.app img,.app .ph{width:50px;height:50px;border-radius:12px;object-fit:cover;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:21px;color:#fff;flex:none}
+.searchbar{display:flex;gap:9px;margin-bottom:13px}
+.searchbar input{flex:1}
+.searchbar select{width:auto;min-width:120px}
+
+/* ---------- fab ---------- */
+.fab{position:fixed;right:18px;bottom:76px;width:55px;height:55px;border-radius:17px;background:var(--purple);color:#fff;font-size:27px;border:none;box-shadow:0 8px 22px rgba(124,58,237,.5);z-index:45;transition:transform .12s}
+.fab:active{transform:scale(.9)}
+
+/* ---------- detail ---------- */
+.dhead{display:flex;align-items:center;gap:13px}
+.dhead img,.dhead .ph{width:58px;height:58px;border-radius:15px;object-fit:cover;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;color:#fff}
+.back{color:var(--purple2);cursor:pointer;font-size:13.5px;font-weight:700;margin-bottom:12px;display:inline-block}
+.kv{font-size:12.5px;color:var(--sub);margin:3px 0}.kv b{color:var(--text)}
+.hist{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.hist:last-child{border:none}
+.hist .t{color:var(--sub);font-size:11px;white-space:nowrap}
+
+/* ---------- preview ---------- */
+.pvwrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+@media(max-width:620px){.pvwrap{grid-template-columns:1fr}}
+.pv{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px}
+.pv .pt{font-size:11px;color:var(--sub);font-weight:700;margin-bottom:9px;text-transform:uppercase;letter-spacing:.6px}
+.mock-dlg{background:var(--card);border:2px solid var(--purple);border-radius:18px;padding:14px;max-width:250px;margin:0 auto}
+.mock-dlg .hd{display:flex;justify-content:space-between;align-items:center}
+.mock-dlg .hd b{font-size:15px}
+.mock-dlg .lg{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.mock-dlg .v{font-size:11.5px;font-weight:700;margin-top:9px}
+.mock-dlg .dt{font-size:10.5px;color:var(--sub);margin-top:2px}
+.mock-dlg hr{border:none;border-top:1px solid var(--line);margin:9px 0}
+.mock-dlg .wn{font-size:12px;font-weight:700}
+.mock-dlg .f{font-size:10.5px;margin-top:5px}
+.mock-dlg .f i{color:var(--purple);font-style:normal;font-weight:800}
+.mock-dlg .bts{display:flex;gap:7px;margin-top:11px}
+.mock-dlg .bts span{flex:1;text-align:center;font-size:10px;font-weight:800;padding:6px 0;border-radius:8px;border:1.5px solid var(--purple);color:var(--purple2)}
+.mock-dlg .bts span.up{background:var(--purple);color:#fff}
+.mock-notif{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px;display:flex;gap:10px;align-items:flex-start}
+.mock-notif img,.mock-notif .ph{width:34px;height:34px;border-radius:9px;object-fit:cover;background:var(--card2);flex:none}
+.mock-notif b{font-size:12px}
+.mock-notif p{font-size:11px;color:var(--sub);margin-top:2px;line-height:1.45}
+.mock-big{width:100%;border-radius:9px;margin-top:9px;display:block}
+
+/* ---------- sheet ---------- */
+.sheetwrap{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:none;align-items:flex-end;justify-content:center}
+.sheetwrap.open{display:flex}
+.sheet{background:var(--card);width:100%;max-width:580px;border-radius:22px 22px 0 0;padding:18px 16px 28px;max-height:88vh;overflow-y:auto;animation:up .25s}
+@keyframes up{from{transform:translateY(70px);opacity:.4}to{transform:none;opacity:1}}
+.grab{width:42px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 13px}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%) translateY(80px);background:var(--purple);color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;transition:.3s;z-index:99;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.back{color:var(--purple2);cursor:pointer;font-size:14px;margin-bottom:12px;display:inline-block}
-.kv{font-size:13px;color:var(--sub);margin:3px 0}.kv b{color:var(--text)}
-#detail .card h3{font-size:17px;margin-bottom:2px}
-.statusline{display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:13px}
+
+/* ---------- lock ---------- */
+#lock{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#lock.show{display:flex}
+#lock .llogo{width:74px;height:74px;border-radius:22px;background:linear-gradient(135deg,#7C3AED,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff}
+#lock input{width:180px;text-align:center;letter-spacing:8px;font-size:20px}
 </style>
 </head>
-<body>
-<div class="wrap">
+<body class="dark">
 
-  <div class="head">
+<!-- ============ PIN LOCK ============ -->
+<div id="lock">
+  <div class="llogo">T</div>
+  <div style="font-size:14px;font-weight:700">Enter Admin PIN</div>
+  <input type="password" id="lockPin" maxlength="8" inputmode="numeric"/>
+  <button class="btn" onclick="tryUnlock()">🔓 Unlock</button>
+</div>
+
+<header>
+  <div class="hleft">
     <div class="logo">T</div>
     <div>
-      <h1>TENIx MODs <span>• Update Admin Panel</span></h1>
-      <div style="font-size:12px;color:var(--sub)">Firebase Realtime Database control center</div>
+      <h1>TENIx MODs <span>• Panel V2</span></h1>
+      <div class="conn"><span class="dot" id="connDot"></span><span id="pingTxt">connect…</span></div>
     </div>
   </div>
-  <div class="tag">Add apps → open an app → press <b style="color:var(--purple2)">CALL UPDATE</b> → the injected app shows <b>UpdateDialogbox + Notification</b> on next launch.</div>
+  <button class="tbtn" id="themeBtn">🌗</button>
+</header>
 
-  <div class="card">
-    <h2><span class="dot" id="connDot"></span> Firebase Connection</h2>
-    <div class="grid2">
-      <div><label>Realtime Database URL</label><input id="dbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com/"/></div>
-      <div><label>Database Secret / Auth (optional)</label><input id="dbSecret" placeholder="leave empty if rules are public"/></div>
+<main>
+  <!-- ============ DASHBOARD ============ -->
+  <section class="page active" id="p-dash">
+    <div class="stats">
+      <div class="stat"><div class="n" id="stTotal">0</div><div class="l">📱 Apps</div></div>
+      <div class="stat"><div class="n" id="stOn">0</div><div class="l">📢 Updates ON</div></div>
+      <div class="stat"><div class="n" id="stCalls">0</div><div class="l">🚀 Total Calls</div></div>
+      <div class="stat"><div class="n" id="stLast" style="font-size:14px">—</div><div class="l">🕒 Last Call</div></div>
     </div>
-    <div class="row">
-      <button class="btn" onclick="saveConn()">💾 Save & Connect</button>
-      <button class="btn ghost" onclick="loadApps()">🔄 Refresh Apps</button>
+    <div class="card"><h2 class="sec">🕒 Recent Activity</h2><div id="recentList"><div class="info">No activity yet.</div></div></div>
+    <div class="card"><h2 class="sec">⚡ Quick Guide</h2><div class="info">
+      1️⃣ Settings → save <b>Firebase URL</b> &nbsp;•&nbsp; 2️⃣ Apps → <b>+ add app</b> &nbsp;•&nbsp;
+      3️⃣ open app → <b>UPDATE</b> → fill → <b>📢 CALL UPDATE</b><br>
+      Injected apps check every <b>15s</b> while running → notification + dialog appear <b>instantly</b>.</div></div>
+  </section>
+
+  <!-- ============ APPS ============ -->
+  <section class="page" id="p-apps">
+    <div class="searchbar">
+      <input id="q" placeholder="🔍 Search name or package…" oninput="renderApps()"/>
+      <select id="sortBy" onchange="renderApps()">
+        <option value="new">Recent</option><option value="name">Name</option><option value="status">Status</option>
+      </select>
     </div>
-  </div>
-
-  <div class="card" id="addCard">
-    <h2>➕ Add New App</h2>
-    <div class="grid2">
-      <div><label>App Name *</label><input id="nName" placeholder="My Modded App"/></div>
-      <div><label>Package ID *</label><input id="nPkg" placeholder="com.example.app"/></div>
-      <div><label>Short About</label><input id="nAbout" placeholder="Short description…"/></div>
-      <div><label>Icon URL</label><input id="nIcon" placeholder="https://…/icon.png"/></div>
+    <div class="row" style="margin:0 0 13px">
+      <button class="btn sm ghost" onclick="bulkAll(true)">▶ ALL ON</button>
+      <button class="btn sm red" onclick="bulkAll(false)">⏸ ALL OFF</button>
+      <button class="btn sm ghost" onclick="loadApps()">🔄 Refresh</button>
     </div>
-    <div class="row"><button class="btn" onclick="addApp()">Add App</button></div>
-  </div>
+    <div class="agrid" id="appsGrid"></div>
+  </section>
 
-  <div class="card" id="listCard">
-    <h2>📱 Your Apps <span class="badge" id="countBadge">0</span></h2>
-    <div class="apps" id="appsGrid"></div>
-  </div>
-
-  <div id="detail" class="hidden">
-    <span class="back" onclick="backToList()">← Back to all apps</span>
+  <!-- ============ DETAIL ============ -->
+  <section class="page" id="p-detail">
+    <span class="back" onclick="nav('apps')">← Back to apps</span>
     <div class="card">
-      <h3 id="dName">—</h3>
-      <div class="kv">Package: <b id="dPkg">—</b></div>
-      <div class="kv">About: <b id="dAbout">—</b></div>
-      <div class="statusline">Update status: <span class="badge off" id="dStatus">OFF</span></div>
+      <div class="dhead" id="dHead"></div>
       <div class="row">
-        <button class="btn" onclick="openUpdateForm()">🚀 UPDATE App</button>
-        <button class="btn red" onclick="deleteApp()">🗑 Delete App</button>
+        <button class="btn" onclick="toggleUpdateForm()">🚀 UPDATE App</button>
+        <button class="btn ghost" onclick="editAppSheet()">✏️ Edit</button>
+        <button class="btn ghost" onclick="dupAppSheet()">📄 Duplicate</button>
+        <button class="btn red" onclick="deleteApp()">🗑 Delete</button>
       </div>
     </div>
 
-    <div class="card hidden" id="updateForm">
-      <h2>🛠 Send Update Command</h2>
+    <div class="card" id="uForm" style="display:none">
+      <h2 class="sec">🛠 Send Update Command</h2>
       <div class="grid2">
         <div><label>Version *</label><input id="uVersion" placeholder="1.0.5"/></div>
         <div><label>Release Date *</label><input type="date" id="uDate"/></div>
         <div><label>UPDATE URL (must) *</label><input id="uLink" placeholder="https://…"/></div>
-        <div><label>Notification Image URL</label><input id="uImg" placeholder="https://…/banner.png"/></div>
+        <div><label>Notification Image URL</label><input id="uImg" placeholder="https://…/banner.png (https!)"/></div>
       </div>
-      <label>Short Description (shows in notification)</label>
+      <label>Short Description (notification text)</label>
       <textarea id="uDesc" placeholder="A big update is here — faster, smoother, better."></textarea>
-      <label>Features list — one per line (✦ is added automatically)</label>
-      <textarea id="uFeat" placeholder="Added new features&#10;Bug fixes and improvements&#10;Optimized performance"></textarea>
+      <label>Features — one per line (✦ auto-added)</label>
+      <textarea id="uFeat" placeholder="Added new features&#10;Bug fixes and improvements"></textarea>
       <div class="row">
         <button class="btn green" onclick="callUpdate()">📢 CALL UPDATE</button>
-        <button class="btn ghost" onclick="stopUpdate()">⏹ Turn OFF Update</button>
+        <button class="btn ghost" onclick="stopUpdate()">⏹ Turn OFF</button>
       </div>
-      <div class="info">After <b>CALL UPDATE</b>, every device running the injected app shows the
-      <b>UpdateDialogbox + notification</b> next time the app opens. Press <b>Turn OFF</b> to stop it.</div>
-    </div>
-  </div>
 
+      <div class="pvwrap">
+        <div class="pv"><div class="pt">📱 Dialog preview</div><div id="pvDialog"></div></div>
+        <div class="pv"><div class="pt">🔔 Notification preview</div><div id="pvNotif"></div></div>
+      </div>
+      <div class="info">🧪 Live preview — type above and watch it update. Every <b>CALL UPDATE</b> press = a <b>fresh notification</b> on devices.</div>
+    </div>
+
+    <div class="card"><h2 class="sec">🕘 Update History</h2><div id="histList"><div class="info">No history yet.</div></div></div>
+  </section>
+
+  <!-- ============ TOOLS ============ -->
+  <section class="page" id="p-tools">
+    <div class="card"><h2 class="sec">🪝 Smali Hook Codes</h2>
+      <label>HOOK 1 — OpenDialogbox (onCreate)</label>
+      <div class="mono" id="c1">invoke-static {p0}, Lcom/TENIx/MODs/OpenDialogbox;->show(Landroid/app/Activity;)V</div>
+      <label>HOOK 2 — UpdateDialogbox (onCreate)</label>
+      <div class="mono" id="c2">invoke-static {p0}, Lcom/TENIx/MODs/UpdateDialogbox;->show(Landroid/app/Activity;)V</div>
+      <div class="row"><button class="btn sm" onclick="copyEl('c1')">📋 Copy Hook 1</button>
+      <button class="btn sm" onclick="copyEl('c2')">📋 Copy Hook 2</button></div>
+    </div>
+    <div class="card"><h2 class="sec">📜 AndroidManifest Permissions</h2>
+      <div class="mono" id="c3">&lt;uses-permission android:name="android.permission.INTERNET"/&gt;
+&lt;uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/&gt;
+&lt;uses-permission android:name="android.permission.POST_NOTIFICATIONS"/&gt;</div>
+      <div class="row"><button class="btn sm" onclick="copyEl('c3')">📋 Copy</button></div>
+    </div>
+    <div class="card"><h2 class="sec">🔒 Firebase Rules</h2>
+      <div class="mono" id="c4">{
+  "rules": {
+    "apps": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}</div>
+      <div class="row"><button class="btn sm" onclick="copyEl('c4')">📋 Copy Rules</button></div>
+    </div>
+    <div class="card"><h2 class="sec">🧬 Dex Strings Checklist</h2>
+      <div class="info">
+      • <b>REPLACE_FIREBASE_REALTIME_DB_URL</b> → your DB URL<br>
+      • <b>REPLACE_FIREBASE_DB_SECRET</b> → DB secret (optional)<br>
+      • Notification image URL <b>must be https://</b> (http is blocked by Android 9+)</div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="page" id="p-settings">
+    <div class="card"><h2 class="sec">🔥 Firebase Connection</h2>
+      <label>Realtime Database URL</label><input id="sUrl" placeholder="https://your-db.firebaseio.com/"/>
+      <label>Database Secret (optional)</label><input id="sSec" placeholder="empty if rules are public"/>
+      <div class="row"><button class="btn" onclick="saveConn()">💾 Save & Connect</button></div>
+    </div>
+    <div class="card"><h2 class="sec">🔄 Live Auto-Refresh</h2>
+      <label>Auto refresh apps every</label>
+      <select id="sAuto">
+        <option value="10">10 seconds</option><option value="15" selected>15 seconds</option>
+        <option value="30">30 seconds</option><option value="60">60 seconds</option><option value="0">OFF</option>
+      </select>
+      <div class="row"><button class="btn" onclick="saveAuto()">💾 Save</button></div>
+    </div>
+    <div class="card"><h2 class="sec">🔐 Admin PIN Lock</h2>
+      <label>PIN (4–8 digits, empty = no lock)</label><input id="sPin" type="password" maxlength="8" inputmode="numeric"/>
+      <div class="row"><button class="btn" onclick="savePin()">💾 Save PIN</button></div>
+    </div>
+    <div class="card"><h2 class="sec">💾 Backup</h2>
+      <div class="row"><button class="btn ghost" onclick="exportJson()">⬇ Export JSON</button>
+      <button class="btn ghost" onclick="document.getElementById('impFile').click()">⬆ Import JSON</button>
+      <input type="file" id="impFile" accept=".json" style="display:none" onchange="importJson(this)"/></div>
+    </div>
+    <div class="card"><h2 class="sec">⚠️ Danger Zone</h2>
+      <div class="row"><button class="btn red" onclick="wipeLocal()">🧹 Clear Local Data</button></div>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" onclick="addAppSheet()">＋</button>
+
+<nav class="nav">
+  <button data-p="dash" class="active" onclick="nav('dash')"><span class="ic">🏠</span>Dashboard</button>
+  <button data-p="apps" onclick="nav('apps')"><span class="ic">📱</span>Apps</button>
+  <button data-p="tools" onclick="nav('tools')"><span class="ic">🧰</span>Tools</button>
+  <button data-p="settings" onclick="nav('settings')"><span class="ic">⚙️</span>Settings</button>
+</nav>
+
+<div class="sheetwrap" id="sheetWrap" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
-const LS_URL='tenix_db_url', LS_SEC='tenix_db_secret';
-let CFG={url:'',secret:''}, CURRENT=null, APPS={};
+/* ==================== state ==================== */
+const LSK='tenix_v2_cfg';
+let CFG={url:'',secret:'',pin:'',auto:15,theme:'dark'};
+let APPS={}, CURRENT=null, TIMER=null;
 
 function $id(x){return document.getElementById(x)}
-function toast(m){const t=$id('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function sanitizePkg(p){return String(p||'').trim().replace(/\./g,'_')}  /* com.a.b -> com_a_b (same as Java) */
+function toast(m){const t=$id('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600)}
+function key(p){return String(p||'').trim().replace(/\./g,'_')}
+function sheetOpen(){return $id('sheetWrap').classList.contains('open')}
+function fmtDate(v){if(!v)return'';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}
+function timeAgo(ts){if(!ts)return'—';const m=Math.floor((Date.now()-Number(ts))/60000);if(m<1)return'just now';if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
 
-function loadConn(){
-  CFG.url=localStorage.getItem(LS_URL)||''; CFG.secret=localStorage.getItem(LS_SEC)||'';
-  $id('dbUrl').value=CFG.url; $id('dbSecret').value=CFG.secret; setDot(!!CFG.url);
-}
-function saveConn(){
-  let u=$id('dbUrl').value.trim();
-  if(u&&!/^https?:\/\//i.test(u))u='https://'+u;
-  if(u&&!u.endsWith('/'))u+='/';
-  CFG.url=u; CFG.secret=$id('dbSecret').value.trim();
-  localStorage.setItem(LS_URL,CFG.url); localStorage.setItem(LS_SEC,CFG.secret);
-  setDot(!!CFG.url);
-  if(!CFG.url){toast('⚠️ Please enter the Database URL');return}
-  toast('✅ Connection saved'); loadApps();
-}
-function setDot(on){$id('connDot').classList.toggle('on',on)}
+/* ==================== config ==================== */
+function loadCfg(){try{const s=localStorage.getItem(LSK);if(s)CFG=Object.assign(CFG,JSON.parse(s))}catch(e){}}
+function saveCfg(){try{localStorage.setItem(LSK,JSON.stringify(CFG))}catch(e){}}
+function applyTheme(){document.body.className=CFG.theme==='light'?'light':'dark'}
 
+/* ==================== firebase api ==================== */
+function authQ(){return CFG.secret?'?auth='+encodeURIComponent(CFG.secret):''}
 async function api(path,method,body){
-  if(!CFG.url)throw new Error('Set the Firebase URL first');
-  let u=CFG.url+path;
-  if(CFG.secret)u+=(u.includes('?')?'&':'?')+'auth='+encodeURIComponent(CFG.secret);
+  if(!CFG.url)throw new Error('Set Firebase URL in Settings');
+  let u=CFG.url+path+(path.includes('?')?'&':'?')+authQ().replace('?','&');
+  if(!CFG.secret)u=CFG.url+path;
   const opt={method:method||'GET'};
   if(body!==undefined){opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body)}
   const r=await fetch(u,opt);
@@ -158,99 +331,241 @@ async function api(path,method,body){
   return r.json();
 }
 
-async function loadApps(){
-  if(!CFG.url){toast('⚠️ Save your Firebase URL first');return}
-  try{APPS=(await api('apps.json','GET'))||{};renderApps()}catch(e){toast('❌ '+e.message)}
+/* ==================== nav ==================== */
+function nav(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  $id('p-'+p).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
+  $id('fab').style.display=(p==='apps')?'block':'none';
+  if(p==='dash')renderDash();
+  if(p==='apps')renderApps();
+}
+
+/* ==================== connection ==================== */
+async function ping(){
+  if(!CFG.url){$id('connDot').classList.remove('on');$id('pingTxt').textContent='no url';return}
+  const t0=performance.now();
+  try{await fetch(CFG.url+'.json?shallow=true'+(CFG.secret?'&auth='+encodeURIComponent(CFG.secret):''));
+    $id('connDot').classList.add('on');$id('pingTxt').textContent=Math.round(performance.now()-t0)+' ms';
+  }catch(e){$id('connDot').classList.remove('on');$id('pingTxt').textContent='offline'}
+}
+function saveConn(){
+  let u=$id('sUrl').value.trim();
+  if(u&&!/^https?:\/\//i.test(u))u='https://'+u;
+  if(u&&!u.endsWith('/'))u+='/';
+  CFG.url=u;CFG.secret=$id('sSec').value.trim();saveCfg();
+  if(!CFG.url){toast('⚠️ Enter DB URL');return}
+  toast('✅ Connected');ping();loadApps();
+}
+
+/* ==================== apps ==================== */
+async function loadApps(silent){
+  if(!CFG.url){if(!silent)toast('⚠️ Save Firebase URL first');return}
+  try{APPS=(await api('apps.json','GET'))||{};renderDash();renderApps();renderRecent()}
+  catch(e){if(!silent)toast('❌ '+e.message)}
+}
+function statusOf(a){return a&&a.update&&a.update.active}
+function renderDash(){
+  const ks=Object.keys(APPS);let on=0,calls=0,last=0;
+  ks.forEach(k=>{const a=APPS[k]||{};if(statusOf(a))on++;
+    if(a.update&&a.update.calledAt)calls++;
+    if(a.update&&a.update.calledAt&&a.update.calledAt>last)last=a.update.calledAt;});
+  $id('stTotal').textContent=ks.length;$id('stOn').textContent=on;
+  $id('stCalls').textContent=calls;$id('stLast').textContent=last?timeAgo(last):'—';
+}
+function renderRecent(){
+  const list=[];Object.keys(APPS).forEach(k=>{const h=APPS[k].history;
+    if(h)Object.keys(h).forEach(id=>{const e=h[id]||{};list.push({k:k,e:e})})});
+  list.sort((a,b)=>(b.e.calledAt||0)-(a.e.calledAt||0));
+  const el=$id('recentList');
+  if(!list.length){el.innerHTML='<div class="info">No activity yet.</div>';return}
+  el.innerHTML=list.slice(0,8).map(x=>'<div class="hist"><span>📢 <b>'+esc((APPS[x.k]&&APPS[x.k].appName)||x.k)+'</b> — v'+esc(x.e.version||'?')+'</span><span class="t">'+timeAgo(x.e.calledAt)+'</span></div>').join('');
 }
 function renderApps(){
-  const g=$id('appsGrid');g.innerHTML='';
-  const keys=Object.keys(APPS);
-  $id('countBadge').textContent=keys.length;
-  if(!keys.length){g.innerHTML='<div class="info">No apps yet — add your first app above ☝️</div>';return}
-  keys.forEach(k=>{
-    const a=APPS[k]||{}, on=a.update&&a.update.active;
-    const el=document.createElement('div');el.className='app';el.onclick=()=>openApp(k);
-    el.innerHTML=(a.iconUrl?'<img src="'+esc(a.iconUrl)+'">':'<div class="ph">T</div>')+
-      '<div style="min-width:0">'+
-      '<div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.appName||k)+'</div>'+
-      '<div style="font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.packageId||k)+'</div>'+
-      '<div style="margin-top:6px"><span class="badge '+(on?'on':'off')+'">'+(on?'UPDATE ON':'idle')+'</span></div></div>';
-    const img=el.querySelector('img');
-    if(img){img.onerror=function(){const ph=document.createElement('div');ph.className='ph';ph.textContent='T';img.replaceWith(ph)}}
-    g.appendChild(el);
-  });
+  const g=$id('appsGrid');const q=($id('q')&&$id('q').value||'').toLowerCase();
+  const sort=$id('sortBy')?$id('sortBy').value:'new';
+  let ks=Object.keys(APPS).filter(k=>{const a=APPS[k]||{};
+    return !q||(a.appName||'').toLowerCase().includes(q)||(a.packageId||'').toLowerCase().includes(q)||k.toLowerCase().includes(q)});
+  if(sort==='name')ks.sort((a,b)=>(APPS[a].appName||'').localeCompare(APPS[b].appName||''));
+  else if(sort==='status')ks.sort((a,b)=>(statusOf(APPS[b])?1:0)-(statusOf(APPS[a])?1:0));
+  else ks.sort((a,b)=>((APPS[b].update&&APPS[b].update.calledAt)||0)-((APPS[a].update&&APPS[a].update.calledAt)||0));
+  $id('fab').style.display=nav_()==='apps'?'block':'none';
+  if(!ks.length){g.innerHTML='<div class="info" style="grid-column:1/-1">No apps'+(q?' found':' yet — tap ＋ to add')+'</div>';return}
+  g.innerHTML=ks.map(k=>{const a=APPS[k]||{};const on=statusOf(a);
+    return '<div class="app" onclick="openDetail(\''+k+'\')">'+
+    (a.iconUrl?'<img src="'+esc(a.iconUrl)+'" class="aic">':'<div class="ph">T</div>')+
+    '<div style="min-width:0"><div style="font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.appName||k)+'</div>'+
+    '<div style="font-size:11.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.packageId||k)+'</div>'+
+    '<div style="margin-top:6px"><span class="badge '+(on?'on':'off')+'">'+(on?'📢 UPDATE ON':'idle')+'</span></div></div></div>'}).join('');
+  g.querySelectorAll('img.aic').forEach(i=>i.onerror=function(){const d=document.createElement('div');d.className='ph';d.textContent='T';i.replaceWith(d)});
 }
+function nav_(){const p=document.querySelector('.page.active');return p?p.id.replace('p-',''):''}
 
-async function addApp(){
-  const name=$id('nName').value.trim(),pkg=$id('nPkg').value.trim();
-  if(!name||!pkg){toast('⚠️ App name and package ID are required');return}
-  try{
-    await api('apps/'+sanitizePkg(pkg)+'.json','PUT',
-      {appName:name,packageId:pkg,about:$id('nAbout').value.trim(),iconUrl:$id('nIcon').value.trim(),
-       createdAt:new Date().toISOString(),update:{active:false}});
-    $id('nName').value='';$id('nPkg').value='';$id('nAbout').value='';$id('nIcon').value='';
-    toast('✅ App added');loadApps();
-  }catch(e){toast('❌ '+e.message)}
+/* ==================== add / edit / dup sheets ==================== */
+function openSheet(html){$id('sheetBody').innerHTML=html;$id('sheetWrap').classList.add('open')}
+function closeSheet(){$id('sheetWrap').classList.remove('open')}
+function addAppSheet(){
+  openSheet('<h2 class="sec">➕ Add New App</h2>'+
+  '<label>App Name *</label><input id="aName"/>'+
+  '<label>Package ID *</label><input id="aPkg" placeholder="com.example.app"/>'+
+  '<label>Short About</label><input id="aAbout"/>'+
+  '<label>Icon URL</label><input id="aIcon" placeholder="https://…/icon.png"/>'+
+  '<div class="row"><button class="btn" onclick="saveNewApp()">✔ Add App</button>'+
+  '<button class="btn ghost" onclick="closeSheet()">Cancel</button></div>');
 }
-
-function openApp(k){
-  CURRENT=k;const a=APPS[k]||{};
-  $id('listCard').classList.add('hidden');$id('addCard').classList.add('hidden');
-  $id('detail').classList.remove('hidden');$id('updateForm').classList.add('hidden');
-  $id('dName').textContent=a.appName||k;$id('dPkg').textContent=a.packageId||k;
-  $id('dAbout').textContent=a.about||'—';refreshStatus(a);
+async function saveNewApp(){
+  const n=$id('aName').value.trim(),p=$id('aPkg').value.trim();
+  if(!n||!p){toast('⚠️ Name & package required');return}
+  const k=key(p);
+  if(APPS[k]){toast('❌ App already exists');return}
+  try{await api('apps/'+k+'.json','PUT',{appName:n,packageId:p,about:$id('aAbout').value.trim(),
+    iconUrl:$id('aIcon').value.trim(),createdAt:new Date().toISOString(),update:{active:false}});
+    closeSheet();toast('✅ App added');loadApps()}catch(e){toast('❌ '+e.message)}
 }
-function refreshStatus(a){
-  const on=a&&a.update&&a.update.active,s=$id('dStatus');
-  s.textContent=on?'ON — dialog will show':'OFF';s.className='badge '+(on?'on':'off');
+function editAppSheet(){
+  const a=APPS[CURRENT]||{};
+  openSheet('<h2 class="sec">✏️ Edit App</h2>'+
+  '<label>App Name</label><input id="eName" value="'+esc(a.appName||'')+'"/>'+
+  '<label>Short About</label><input id="eAbout" value="'+esc(a.about||'')+'"/>'+
+  '<label>Icon URL</label><input id="eIcon" value="'+esc(a.iconUrl||'')+'"/>'+
+  '<div class="row"><button class="btn" onclick="saveEdit()">✔ Save</button>'+
+  '<button class="btn ghost" onclick="closeSheet()">Cancel</button></div>');
 }
-function backToList(){
-  $id('detail').classList.add('hidden');$id('listCard').classList.remove('hidden');
-  $id('addCard').classList.remove('hidden');CURRENT=null;loadApps();
+async function saveEdit(){
+  try{await api('apps/'+CURRENT+'.json','PATCH',{appName:$id('eName').value.trim(),
+    about:$id('eAbout').value.trim(),iconUrl:$id('eIcon').value.trim()});
+    closeSheet();toast('✅ Saved');loadApps()}catch(e){toast('❌ '+e.message)}
+}
+function dupAppSheet(){
+  openSheet('<h2 class="sec">📄 Duplicate App</h2>'+
+  '<label>New Package ID</label><input id="dPkg" placeholder="com.other.app"/>'+
+  '<div class="row"><button class="btn" onclick="saveDup()">✔ Duplicate</button>'+
+  '<button class="btn ghost" onclick="closeSheet()">Cancel</button></div>');
+}
+async function saveDup(){
+  const p=$id('dPkg').value.trim();if(!p){toast('⚠️ Package required');return}
+  const nk=key(p);if(APPS[nk]){toast('❌ Already exists');return}
+  const src=JSON.parse(JSON.stringify(APPS[CURRENT]||{}));
+  src.packageId=p;src.duplicatedFrom=CURRENT;src.update={active:false};delete src.history;
+  try{await api('apps/'+nk+'.json','PUT',src);closeSheet();toast('✅ Duplicated');loadApps()}catch(e){toast('❌ '+e.message)}
 }
 async function deleteApp(){
-  if(!CURRENT)return;
-  if(!confirm('Delete "'+((APPS[CURRENT]&&APPS[CURRENT].appName)||CURRENT)+'" permanently?'))return;
-  try{await api('apps/'+CURRENT+'.json','DELETE');toast('🗑 App deleted');backToList()}catch(e){toast('❌ '+e.message)}
+  const a=APPS[CURRENT]||{};
+  if(!confirm('Delete "'+(a.appName||CURRENT)+'" permanently?'))return;
+  try{await api('apps/'+CURRENT+'.json','DELETE');toast('🗑 Deleted');nav('apps');loadApps()}catch(e){toast('❌ '+e.message)}
 }
-function openUpdateForm(){
-  const u=$id('updateForm');u.classList.toggle('hidden');
-  if(!u.classList.contains('hidden')){
-    $id('uDate').value=new Date().toISOString().slice(0,10);
-    const p=(APPS[CURRENT]&&APPS[CURRENT].update)||{};
-    $id('uVersion').value=p.version||'';$id('uLink').value=p.updateUrl||'';
-    $id('uImg').value=p.imageUrl||'';$id('uDesc').value=p.description||'';$id('uFeat').value=p.features||'';
-  }
+async function bulkAll(on){
+  const ks=Object.keys(APPS);if(!ks.length){toast('No apps');return}
+  if(!confirm((on?'Turn ON':'Turn OFF')+' update for ALL '+ks.length+' apps?'))return;
+  try{for(const k of ks){await api('apps/'+k+'/update/active.json','PUT',on)}
+    toast(on?'▶ All ON':'⏸ All OFF');loadApps()}catch(e){toast('❌ '+e.message)}
 }
-function fmtDate(v){
-  if(!v)return'';const d=new Date(v+'T00:00:00');
-  return isNaN(d)?v:d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+/* ==================== detail + update ==================== */
+function openDetail(k){
+  CURRENT=k;const a=APPS[k]||{};
+  $id('dHead').innerHTML=(a.iconUrl?'<img src="'+esc(a.iconUrl)+'" class="aic">':'<div class="ph">T</div>')+
+    '<div><div style="font-weight:800;font-size:17px">'+esc(a.appName||k)+'</div>'+
+    '<div class="kv">📦 <b>'+esc(a.packageId||k)+'</b></div>'+
+    '<div class="kv">📝 '+esc(a.about||'—')+'</div>'+
+    '<div style="margin-top:5px"><span class="badge '+(statusOf(a)?'on':'off')+'" id="dStatus">'+(statusOf(a)?'📢 UPDATE ON':'idle')+'</span></div></div>';
+  $id('dHead').querySelectorAll('img.aic').forEach(i=>i.onerror=function(){const d=document.createElement('div');d.className='ph';d.textContent='T';i.replaceWith(d)});
+  const p=a.update||{};
+  $id('uVersion').value=p.version||'';$id('uLink').value=p.updateUrl||'';
+  $id('uImg').value=p.imageUrl||'';$id('uDesc').value=p.description||'';$id('uFeat').value=p.features||'';
+  $id('uForm').style.display='none';
+  renderHist();renderPreview();nav('detail');
+}
+function renderHist(){
+  const h=APPS[CURRENT]&&APPS[CURRENT].history;const el=$id('histList');
+  if(!h){el.innerHTML='<div class="info">No history yet.</div>';return}
+  const arr=Object.keys(h).map(x=>h[x]).sort((a,b)=>(b.calledAt||0)-(a.calledAt||0)).slice(0,10);
+  el.innerHTML=arr.map(e=>'<div class="hist"><span>🚀 v'+esc(e.version||'?')+' — '+esc(e.releaseDate||'')+'</span><span class="t">'+timeAgo(e.calledAt)+'</span></div>').join('');
+}
+function toggleUpdateForm(){
+  const f=$id('uForm');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block'){if(!$id('uDate').value)$id('uDate').value=new Date().toISOString().slice(0,10);renderPreview()}
+}
+['uVersion','uDate','uLink','uImg','uDesc','uFeat'].forEach(id=>{document.addEventListener('input',e=>{if(e.target&&e.target.id===id)renderPreview()})});
+function formData(){
+  return{version:$id('uVersion').value.trim()||'1.0',date:$id('uDate').value,
+    link:$id('uLink').value.trim(),img:$id('uImg').value.trim(),
+    desc:$id('uDesc').value.trim(),feat:$id('uFeat').value.split('\n').map(s=>s.trim().replace(/^[✦•*-]\s*/,'')).filter(Boolean)};
+}
+function renderPreview(){
+  if($id('uForm').style.display==='none')return;
+  const d=formData();const a=APPS[CURRENT]||{};
+  let fl='';d.feat.slice(0,4).forEach(f=>fl+='<div class="f"><i>✦</i> '+esc(f)+'</div>');
+  if(!fl)fl='<div class="f"><i>✦</i> '+(esc(d.desc)||'Bug fixes and improvements')+'</div>';
+  $id('pvDialog').innerHTML='<div class="mock-dlg"><div class="hd"><b>New Update</b><div class="lg">T</div></div>'+
+    '<div class="v">Version '+esc(d.version)+'</div><div class="dt">Release '+esc(fmtDate(d.date)||'—')+'</div><hr>'+
+    '<div class="wn">What\'s New</div>'+fl+
+    '<div class="bts"><span>EXIT</span><span class="up">UPDATE</span></div></div>';
+  $id('pvNotif').innerHTML='<div class="mock-notif">'+(a.iconUrl?'<img src="'+esc(a.iconUrl)+'">':'<div class="ph"></div>')+
+    '<div style="min-width:0"><b>New Update • v'+esc(d.version)+'</b><p>'+esc(d.desc||'A new version is ready — update now!')+'</p></div></div>'+
+    (d.img?'<img class="mock-big" src="'+esc(d.img)+'" onerror="this.style.display=\'none\'">':'');
 }
 async function callUpdate(){
-  if(!CURRENT)return;
-  const link=$id('uLink').value.trim();
-  if(!link){toast('⚠️ Update URL is required');return}
-  const feats=$id('uFeat').value.split('\n').map(s=>s.trim().replace(/^[✦•*-]\s*/,'')).filter(Boolean).join('\n');
-  const up={active:true,version:$id('uVersion').value.trim()||'1.0',releaseDate:fmtDate($id('uDate').value),
-    description:$id('uDesc').value.trim(),features:feats,updateUrl:link,
-    imageUrl:$id('uImg').value.trim(),calledAt:new Date().toISOString()};
+  const d=formData();
+  if(!d.link){toast('⚠️ Update URL is required');return}
+  if(d.img&&d.img.startsWith('http://'))d.img='https://'+d.img.substring(7);
+  const calledAt=Date.now();
+  const up={active:true,version:d.version,releaseDate:fmtDate(d.date),description:d.desc,
+    features:d.feat.join('\n'),updateUrl:d.link,imageUrl:d.img,calledAt:calledAt};
   try{
     await api('apps/'+CURRENT+'/update.json','PUT',up);
-    APPS[CURRENT].update=up;refreshStatus(APPS[CURRENT]);
-    toast('📢 UPDATE called! Dialog shows on next launch');
+    await api('apps/'+CURRENT+'/history.json','POST',
+      {calledAt:calledAt,version:d.version,releaseDate:fmtDate(d.date),description:d.desc});
+    toast('📢 UPDATE called! Devices get it within ~15s');
+    loadApps();setTimeout(()=>{if(APPS[CURRENT])openDetail(CURRENT)},600);
   }catch(e){toast('❌ '+e.message)}
 }
 async function stopUpdate(){
-  if(!CURRENT)return;
-  try{
-    await api('apps/'+CURRENT+'/update.json','PATCH',{active:false});
-    APPS[CURRENT].update=Object.assign({},APPS[CURRENT].update,{active:false});
-    refreshStatus(APPS[CURRENT]);toast('⏹ Update turned OFF');
-  }catch(e){toast('❌ '+e.message)}
+  try{await api('apps/'+CURRENT+'/update/active.json','PUT',false);
+    toast('⏹ Update OFF');loadApps();setTimeout(()=>{if(APPS[CURRENT])openDetail(CURRENT)},600)}
+  catch(e){toast('❌ '+e.message)}
 }
 
-loadConn();
-if(CFG.url)loadApps();
+/* ==================== tools / settings ==================== */
+function copyEl(id){
+  const t=$id(id).textContent;
+  if(navigator.clipboard){navigator.clipboard.writeText(t).then(()=>toast('📋 Copied')).catch(()=>fallbackCopy(t))}
+  else fallbackCopy(t);
+}
+function fallbackCopy(t){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');toast('📋 Copied')}catch(e){toast('Copy failed')}document.body.removeChild(a)}
+function saveAuto(){CFG.auto=parseInt($id('sAuto').value,10);saveCfg();startAuto();toast('✅ Auto-refresh: '+(CFG.auto?CFG.auto+'s':'OFF'))}
+function savePin(){const p=$id('sPin').value.trim();if(p&&p.length<4){toast('⚠️ Min 4 digits');return}CFG.pin=p;saveCfg();toast(p?'✅ PIN saved':'PIN removed')}
+function exportJson(){const b=new Blob([JSON.stringify({apps:APPS,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tenix-backup.json';a.click();toast('⬇ Exported')}
+function importJson(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=async()=>{try{const d=JSON.parse(r.result);if(!d.apps)throw new Error('bad file');
+    if(!confirm('Replace ALL apps with backup?'))return;
+    await api('apps.json','PUT',d.apps);toast('✅ Imported');loadApps()}catch(e){toast('❌ '+e.message)}};
+  r.readAsText(f);inp.value='';
+}
+function wipeLocal(){if(!confirm('Clear local settings (URL/PIN/theme)?'))return;localStorage.removeItem(LSK);location.reload()}
+
+/* ==================== lock ==================== */
+function tryUnlock(){if($id('lockPin').value===CFG.pin){$id('lock').classList.remove('show');boot()}else{toast('❌ Wrong PIN');$id('lockPin').value=''}}
+
+/* ==================== auto refresh ==================== */
+function startAuto(){if(TIMER)clearInterval(TIMER);TIMER=null;
+  if(CFG.auto>0)TIMER=setInterval(()=>{if(!sheetOpen()&&!$id('lock').classList.contains('show'))loadApps(true)},CFG.auto*1000)}
+
+/* ==================== theme ==================== */
+ $id('themeBtn').onclick=()=>{CFG.theme=CFG.theme==='light'?'dark':'light';saveCfg();applyTheme()};
+
+/* ==================== boot ==================== */
+loadCfg();applyTheme();
+ $id('sUrl').value=CFG.url;$id('sSec').value=CFG.secret;$id('sAuto').value=String(CFG.auto);$id('sPin').value=CFG.pin||'';
+if(CFG.pin){$id('lock').classList.add('show')}else boot();
+function boot(){
+  ping();setInterval(ping,30000);
+  loadApps(true);startAuto();
+  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$id('lock').classList.contains('show'))tryUnlock()});
+}
 </script>
 </body>
 </html>
