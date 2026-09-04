@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TENIx MODs • Update Admin Panel</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+:root{--purple:#7C3AED;--purple2:#9B5CFF;--bg:#0A0A0F;--card:#14141C;--card2:#1B1B26;--line:#26262F;--text:#F2F2F5;--sub:#9A9AA5}
+body{background:var(--bg);color:var(--text);min-height:100vh;padding:24px 18px 60px}
+.wrap{max-width:980px;margin:0 auto}
+h1{font-size:22px}.head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+h1 span{color:var(--purple2)}
+.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff}
+.tag{color:var(--sub);font-size:13px;margin-bottom:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px}
+.card h2{font-size:15px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:#ef4444;display:inline-block}
+.dot.on{background:#22c55e}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{font-size:12px;color:var(--sub);display:block;margin:10px 0 5px}
+input,textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;outline:none}
+input:focus,textarea:focus{border-color:var(--purple)}
+textarea{min-height:90px;resize:vertical;line-height:1.5}
+.btn{border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;color:#fff;background:var(--purple);transition:.15s}
+.btn:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;border:1px solid var(--purple);color:var(--purple2)}
+.btn.red{background:transparent;border:1px solid #ef4444;color:#ef4444}
+.btn.green{background:#14532d;border:1px solid #22c55e}
+.row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:10px}
+.app{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:.15s}
+.app:hover{border-color:var(--purple);transform:translateY(-2px)}
+.app img,.app .ph{width:52px;height:52px;border-radius:12px;object-fit:cover;background:var(--purple);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;flex:none}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--sub)}
+.badge.on{color:#4ade80;border-color:#166534}
+.badge.off{color:#f87171;border-color:#7f1d1d}
+.hidden{display:none}
+.info{font-size:13px;color:var(--sub);line-height:1.6;background:var(--card2);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin-top:14px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);background:var(--purple);color:#fff;padding:11px 20px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;z-index:99;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.back{color:var(--purple2);cursor:pointer;font-size:14px;margin-bottom:12px;display:inline-block}
+.kv{font-size:13px;color:var(--sub);margin:3px 0}.kv b{color:var(--text)}
+#detail .card h3{font-size:17px;margin-bottom:2px}
+.statusline{display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div class="logo">T</div>
+    <div>
+      <h1>TENIx MODs <span>• Update Admin Panel</span></h1>
+      <div style="font-size:12px;color:var(--sub)">Firebase Realtime Database control center</div>
+    </div>
+  </div>
+  <div class="tag">Add apps → open an app → press <b style="color:var(--purple2)">CALL UPDATE</b> → the injected app shows <b>UpdateDialogbox + Notification</b> on next launch.</div>
+
+  <div class="card">
+    <h2><span class="dot" id="connDot"></span> Firebase Connection</h2>
+    <div class="grid2">
+      <div><label>Realtime Database URL</label><input id="dbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com/"/></div>
+      <div><label>Database Secret / Auth (optional)</label><input id="dbSecret" placeholder="leave empty if rules are public"/></div>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="saveConn()">💾 Save & Connect</button>
+      <button class="btn ghost" onclick="loadApps()">🔄 Refresh Apps</button>
+    </div>
+  </div>
+
+  <div class="card" id="addCard">
+    <h2>➕ Add New App</h2>
+    <div class="grid2">
+      <div><label>App Name *</label><input id="nName" placeholder="My Modded App"/></div>
+      <div><label>Package ID *</label><input id="nPkg" placeholder="com.example.app"/></div>
+      <div><label>Short About</label><input id="nAbout" placeholder="Short description…"/></div>
+      <div><label>Icon URL</label><input id="nIcon" placeholder="https://…/icon.png"/></div>
+    </div>
+    <div class="row"><button class="btn" onclick="addApp()">Add App</button></div>
+  </div>
+
+  <div class="card" id="listCard">
+    <h2>📱 Your Apps <span class="badge" id="countBadge">0</span></h2>
+    <div class="apps" id="appsGrid"></div>
+  </div>
+
+  <div id="detail" class="hidden">
+    <span class="back" onclick="backToList()">← Back to all apps</span>
+    <div class="card">
+      <h3 id="dName">—</h3>
+      <div class="kv">Package: <b id="dPkg">—</b></div>
+      <div class="kv">About: <b id="dAbout">—</b></div>
+      <div class="statusline">Update status: <span class="badge off" id="dStatus">OFF</span></div>
+      <div class="row">
+        <button class="btn" onclick="openUpdateForm()">🚀 UPDATE App</button>
+        <button class="btn red" onclick="deleteApp()">🗑 Delete App</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="updateForm">
+      <h2>🛠 Send Update Command</h2>
+      <div class="grid2">
+        <div><label>Version *</label><input id="uVersion" placeholder="1.0.5"/></div>
+        <div><label>Release Date *</label><input type="date" id="uDate"/></div>
+        <div><label>UPDATE URL (must) *</label><input id="uLink" placeholder="https://…"/></div>
+        <div><label>Notification Image URL</label><input id="uImg" placeholder="https://…/banner.png"/></div>
+      </div>
+      <label>Short Description (shows in notification)</label>
+      <textarea id="uDesc" placeholder="A big update is here — faster, smoother, better."></textarea>
+      <label>Features list — one per line (✦ is added automatically)</label>
+      <textarea id="uFeat" placeholder="Added new features&#10;Bug fixes and improvements&#10;Optimized performance"></textarea>
+      <div class="row">
+        <button class="btn green" onclick="callUpdate()">📢 CALL UPDATE</button>
+        <button class="btn ghost" onclick="stopUpdate()">⏹ Turn OFF Update</button>
+      </div>
+      <div class="info">After <b>CALL UPDATE</b>, every device running the injected app shows the
+      <b>UpdateDialogbox + notification</b> next time the app opens. Press <b>Turn OFF</b> to stop it.</div>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const LS_URL='tenix_db_url', LS_SEC='tenix_db_secret';
+let CFG={url:'',secret:''}, CURRENT=null, APPS={};
+
+function $id(x){return document.getElementById(x)}
+function toast(m){const t=$id('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function sanitizePkg(p){return String(p||'').trim().replace(/\./g,'_')}  /* com.a.b -> com_a_b (same as Java) */
+
+function loadConn(){
+  CFG.url=localStorage.getItem(LS_URL)||''; CFG.secret=localStorage.getItem(LS_SEC)||'';
+  $id('dbUrl').value=CFG.url; $id('dbSecret').value=CFG.secret; setDot(!!CFG.url);
+}
+function saveConn(){
+  let u=$id('dbUrl').value.trim();
+  if(u&&!/^https?:\/\//i.test(u))u='https://'+u;
+  if(u&&!u.endsWith('/'))u+='/';
+  CFG.url=u; CFG.secret=$id('dbSecret').value.trim();
+  localStorage.setItem(LS_URL,CFG.url); localStorage.setItem(LS_SEC,CFG.secret);
+  setDot(!!CFG.url);
+  if(!CFG.url){toast('⚠️ Please enter the Database URL');return}
+  toast('✅ Connection saved'); loadApps();
+}
+function setDot(on){$id('connDot').classList.toggle('on',on)}
+
+async function api(path,method,body){
+  if(!CFG.url)throw new Error('Set the Firebase URL first');
+  let u=CFG.url+path;
+  if(CFG.secret)u+=(u.includes('?')?'&':'?')+'auth='+encodeURIComponent(CFG.secret);
+  const opt={method:method||'GET'};
+  if(body!==undefined){opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body)}
+  const r=await fetch(u,opt);
+  if(!r.ok)throw new Error('Firebase error '+r.status);
+  return r.json();
+}
+
+async function loadApps(){
+  if(!CFG.url){toast('⚠️ Save your Firebase URL first');return}
+  try{APPS=(await api('apps.json','GET'))||{};renderApps()}catch(e){toast('❌ '+e.message)}
+}
+function renderApps(){
+  const g=$id('appsGrid');g.innerHTML='';
+  const keys=Object.keys(APPS);
+  $id('countBadge').textContent=keys.length;
+  if(!keys.length){g.innerHTML='<div class="info">No apps yet — add your first app above ☝️</div>';return}
+  keys.forEach(k=>{
+    const a=APPS[k]||{}, on=a.update&&a.update.active;
+    const el=document.createElement('div');el.className='app';el.onclick=()=>openApp(k);
+    el.innerHTML=(a.iconUrl?'<img src="'+esc(a.iconUrl)+'">':'<div class="ph">T</div>')+
+      '<div style="min-width:0">'+
+      '<div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.appName||k)+'</div>'+
+      '<div style="font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.packageId||k)+'</div>'+
+      '<div style="margin-top:6px"><span class="badge '+(on?'on':'off')+'">'+(on?'UPDATE ON':'idle')+'</span></div></div>';
+    const img=el.querySelector('img');
+    if(img){img.onerror=function(){const ph=document.createElement('div');ph.className='ph';ph.textContent='T';img.replaceWith(ph)}}
+    g.appendChild(el);
+  });
+}
+
+async function addApp(){
+  const name=$id('nName').value.trim(),pkg=$id('nPkg').value.trim();
+  if(!name||!pkg){toast('⚠️ App name and package ID are required');return}
+  try{
+    await api('apps/'+sanitizePkg(pkg)+'.json','PUT',
+      {appName:name,packageId:pkg,about:$id('nAbout').value.trim(),iconUrl:$id('nIcon').value.trim(),
+       createdAt:new Date().toISOString(),update:{active:false}});
+    $id('nName').value='';$id('nPkg').value='';$id('nAbout').value='';$id('nIcon').value='';
+    toast('✅ App added');loadApps();
+  }catch(e){toast('❌ '+e.message)}
+}
+
+function openApp(k){
+  CURRENT=k;const a=APPS[k]||{};
+  $id('listCard').classList.add('hidden');$id('addCard').classList.add('hidden');
+  $id('detail').classList.remove('hidden');$id('updateForm').classList.add('hidden');
+  $id('dName').textContent=a.appName||k;$id('dPkg').textContent=a.packageId||k;
+  $id('dAbout').textContent=a.about||'—';refreshStatus(a);
+}
+function refreshStatus(a){
+  const on=a&&a.update&&a.update.active,s=$id('dStatus');
+  s.textContent=on?'ON — dialog will show':'OFF';s.className='badge '+(on?'on':'off');
+}
+function backToList(){
+  $id('detail').classList.add('hidden');$id('listCard').classList.remove('hidden');
+  $id('addCard').classList.remove('hidden');CURRENT=null;loadApps();
+}
+async function deleteApp(){
+  if(!CURRENT)return;
+  if(!confirm('Delete "'+((APPS[CURRENT]&&APPS[CURRENT].appName)||CURRENT)+'" permanently?'))return;
+  try{await api('apps/'+CURRENT+'.json','DELETE');toast('🗑 App deleted');backToList()}catch(e){toast('❌ '+e.message)}
+}
+function openUpdateForm(){
+  const u=$id('updateForm');u.classList.toggle('hidden');
+  if(!u.classList.contains('hidden')){
+    $id('uDate').value=new Date().toISOString().slice(0,10);
+    const p=(APPS[CURRENT]&&APPS[CURRENT].update)||{};
+    $id('uVersion').value=p.version||'';$id('uLink').value=p.updateUrl||'';
+    $id('uImg').value=p.imageUrl||'';$id('uDesc').value=p.description||'';$id('uFeat').value=p.features||'';
+  }
+}
+function fmtDate(v){
+  if(!v)return'';const d=new Date(v+'T00:00:00');
+  return isNaN(d)?v:d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+}
+async function callUpdate(){
+  if(!CURRENT)return;
+  const link=$id('uLink').value.trim();
+  if(!link){toast('⚠️ Update URL is required');return}
+  const feats=$id('uFeat').value.split('\n').map(s=>s.trim().replace(/^[✦•*-]\s*/,'')).filter(Boolean).join('\n');
+  const up={active:true,version:$id('uVersion').value.trim()||'1.0',releaseDate:fmtDate($id('uDate').value),
+    description:$id('uDesc').value.trim(),features:feats,updateUrl:link,
+    imageUrl:$id('uImg').value.trim(),calledAt:new Date().toISOString()};
+  try{
+    await api('apps/'+CURRENT+'/update.json','PUT',up);
+    APPS[CURRENT].update=up;refreshStatus(APPS[CURRENT]);
+    toast('📢 UPDATE called! Dialog shows on next launch');
+  }catch(e){toast('❌ '+e.message)}
+}
+async function stopUpdate(){
+  if(!CURRENT)return;
+  try{
+    await api('apps/'+CURRENT+'/update.json','PATCH',{active:false});
+    APPS[CURRENT].update=Object.assign({},APPS[CURRENT].update,{active:false});
+    refreshStatus(APPS[CURRENT]);toast('⏹ Update turned OFF');
+  }catch(e){toast('❌ '+e.message)}
+}
+
+loadConn();
+if(CFG.url)loadApps();
+</script>
+</body>
+</html>
