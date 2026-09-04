@@ -8,7 +8,8 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -19,6 +20,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -41,51 +43,100 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 
 /**
- * TENIx MODs — UPDATE DIALOG BOX
- * 320×360 rounded card • auto dark/light • purple border + purple ✦ bullets.
- * Reads:  apps/{packageId_with_underscores}/update  from Firebase Realtime DB (REST).
- * If "active" is true → shows Update Dialog + Notification (with image).
- * Everything is try/catch protected — the host app can NEVER crash.
+ * TENIx MODs — UPDATE DIALOG BOX (V2)
+ *
+ * V2 ENGINE:
+ *  1. Instant check on every app launch (hook).
+ *  2. LIVE POLLING every 15s while the app process is alive → admin presses
+ *     "CALL UPDATE" → notification + dialog appear within seconds. NO restart needed.
+ *  3. Every CALL UPDATE gets a fresh "calledAt" timestamp → EVERY press fires a
+ *     NEW notification (unique ID) — fixes "worked 3 times then stopped".
+ *  4. Notification image: forces HTTPS, downloads bitmap, sets LargeIcon +
+ *     BigPictureStyle. Waits for Android 13 notification permission (4 retries).
  *
  * Hook: invoke-static {p0}, Lcom/TENIx/MODs/UpdateDialogbox;->show(Landroid/app/Activity;)V
  */
 public class UpdateDialogbox {
 
-    /* ==== CONFIG — search & replace these strings in the dex after build =====
+    /* ==== CONFIG — search & replace in dex strings after build ================
        REPLACE_FIREBASE_REALTIME_DB_URL -> https://your-project-default-rtdb.firebaseio.com/
        REPLACE_FIREBASE_DB_SECRET       -> legacy database secret (or leave placeholder) */
     public static String FIREBASE_DB_URL    = "REPLACE_FIREBASE_REALTIME_DB_URL";
     public static String FIREBASE_DB_SECRET = "REPLACE_FIREBASE_DB_SECRET";
-    /* ========================================================================= */
+    /* ========================================================================== */
 
-    private static final int PURPLE   = 0xFF7C3AED;
-    private static final int NOTIF_ID = 7331;
+    private static final int    PURPLE        = 0xFF7C3AED;
+    private static final long   POLL_MS       = 15000;   // live check every 15s
+    private static final String PREFS         = "TENIx_MODS_UPDATES";
+    private static final String KEY_NOTIFIED  = "last_notified_calledAt";
+    private static final int    BASE_NOTIF_ID = 7331;
 
+    private static final Object LOCK = new Object();
+    private static Context appContext;
+    private static WeakReference<Activity> liveActivity = new WeakReference<Activity>(null);
+    private static HandlerThread pollThread;
+    private static Handler pollHandler;
+    private static boolean polling = false;
     private static boolean dialogShowing = false;
-    private static boolean notified      = false;
+    private static String  sessionDialogTs = "";
+    private static boolean permRequested = false;
 
     /** HOOK ENTRY POINT */
     public static void show(final Activity activity) {
         if (activity == null || activity.isFinishing()) return;
+        try { liveActivity = new WeakReference<Activity>(activity); } catch (Throwable ignored) {}
+        try { appContext = activity.getApplicationContext(); } catch (Throwable ignored) {}
+        runCheck(activity);     // instant check on launch
+        startPolling();         // live updates while app is running
+    }
+
+    /* ===================== polling engine (V2) ===================== */
+
+    private static void runCheck(final Activity act) {
         new Thread(new Runnable() {
-            @Override public void run() { checkForUpdate(activity); }
+            @Override public void run() { try { checkNow(act); } catch (Throwable ignored) {} }
         }).start();
     }
 
-    /* =======================================================================
-       FIREBASE (REST) — reads apps/{pkg}.json in background thread
-       ======================================================================= */
-    private static void checkForUpdate(final Activity act) {
+    private static void startPolling() {
+        synchronized (LOCK) {
+            if (polling || appContext == null) return;
+            String u = (FIREBASE_DB_URL == null) ? "" : FIREBASE_DB_URL.trim();
+            if (u.isEmpty() || u.contains("REPLACE_")) return;
+            try {
+                pollThread = new HandlerThread("TENIx_Update_Poll");
+                pollThread.setPriority(Thread.MIN_PRIORITY);
+                pollThread.start();
+                pollHandler = new Handler(pollThread.getLooper());
+                polling = true;
+                pollHandler.postDelayed(new Runnable() {
+                    @Override public void run() {
+                        try { checkNow(null); } catch (Throwable ignored) {}
+                        Handler h = pollHandler;
+                        if (h != null) h.postDelayed(this, POLL_MS);
+                    }
+                }, POLL_MS);
+            } catch (Throwable t) { polling = false; }
+        }
+    }
+
+    /* ===================== firebase check (REST) ===================== */
+
+    private static void checkNow(final Activity actFromCall) {
         try {
             String base = (FIREBASE_DB_URL == null) ? "" : FIREBASE_DB_URL.trim();
-            if (base.isEmpty() || base.contains("REPLACE_")) return;   // not configured yet
+            if (base.isEmpty() || base.contains("REPLACE_")) return;
             if (!base.endsWith("/")) base = base + "/";
-            String key = act.getPackageName().replace('.', '_');       // com.test.app -> com_test_app
+
+            Context ctx = (appContext != null) ? appContext : actFromCall;
+            if (ctx == null) return;
+            String key = ctx.getPackageName().replace('.', '_');
             String urlStr = base + "apps/" + key + ".json";
 
             String secret = (FIREBASE_DB_SECRET == null) ? "" : FIREBASE_DB_SECRET.trim();
@@ -94,9 +145,10 @@ public class UpdateDialogbox {
             }
 
             HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(7000);
+            conn.setReadTimeout(7000);
             conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "TENIxMODs/2.0");
             int code = conn.getResponseCode();
             InputStream in = (code >= 400) ? conn.getErrorStream() : conn.getInputStream();
             String body = readStream(in);
@@ -104,101 +156,155 @@ public class UpdateDialogbox {
 
             if (body == null || body.length() < 2 || "null".equals(body)) return;
 
-            JSONObject rootNode = new JSONObject(body);
-            JSONObject up = rootNode.optJSONObject("update");
-            if (up == null) up = rootNode;                             // flat structure also allowed
+            JSONObject root = new JSONObject(body);
+            JSONObject up = root.optJSONObject("update");
+            if (up == null) up = root;
 
             boolean active = up.optBoolean("active", false) || up.optBoolean("updateActive", false);
             if (!active) return;
 
-            final String version   = up.optString("version", "");
-            final String date      = up.optString("releaseDate", up.optString("date", ""));
-            final String desc      = up.optString("description", "");
-            final String features  = up.optString("features", "");
-            final String updateUrl = up.optString("updateUrl", up.optString("url", ""));
-            final String imageUrl  = up.optString("imageUrl", "");
+            long calledAtL = up.optLong("calledAt", 0L);
+            final String ts = String.valueOf(calledAtL);
 
-            final Bitmap bigPic = (imageUrl.trim().isEmpty()) ? null : downloadBitmap(imageUrl.trim());
+            final String version  = up.optString("version", "").trim();
+            final String date     = up.optString("releaseDate", up.optString("date", "")).trim();
+            final String desc     = up.optString("description", "").trim();
+            final String features = up.optString("features", "").trim();
+            final String link     = up.optString("updateUrl", up.optString("url", "")).trim();
 
-            new Handler(Looper.getMainLooper()).post(new Runnable() {
+            String imgUrl = up.optString("imageUrl", "").trim();
+            if (imgUrl.startsWith("http://")) imgUrl = "https://" + imgUrl.substring(7); // FIX: cleartext block
+            final Bitmap img = imgUrl.isEmpty() ? null : downloadBitmap(imgUrl);
+
+            final boolean isNewUpdate = !ts.equals(getPref(KEY_NOTIFIED, ""));
+
+            postToMain(new Runnable() {
                 @Override public void run() {
                     try {
-                        if (act.isFinishing() || act.isDestroyed()) return;
-                        notifyUpdate(act, version, desc, bigPic);
-                        showUpdateDialog(act, version, date, desc, features, updateUrl);
-                    } catch (Throwable t) {
-                        dialogShowing = false;
-                    }
+                        Activity a = (actFromCall != null) ? actFromCall : liveActivity.get();
+
+                        /* NOTIFICATION — only for NEW calledAt (every CALL UPDATE press) */
+                        if (isNewUpdate) {
+                            notifyNewUpdate(a, version, desc, img, ts);
+                            setPref(KEY_NOTIFIED, ts);
+                        }
+
+                        /* DIALOG — every launch while active; once per calledAt per session */
+                        if (a != null && !a.isFinishing() && !a.isDestroyed()
+                                && !dialogShowing && !sessionDialogTs.equals(ts)) {
+                            sessionDialogTs = ts;
+                            showUpdateDialog(a, version, date, desc, features, link);
+                        }
+                    } catch (Throwable ignored) {}
                 }
             });
-        } catch (Throwable t) {
-            /* no internet / wrong url / bad json — NEVER crash the host app */
-        }
+        } catch (Throwable t) { /* never crash the host app */ }
     }
 
-    /* =======================================================================
-       NOTIFICATION (with image via BigPictureStyle)
-       ======================================================================= */
-    private static void notifyUpdate(Context ctx, String version, String desc, Bitmap img) {
-        if (notified) return;
-        notified = true;
+    /* ===================== notification (V2: permission-aware + image) ===================== */
+
+    private static void notifyNewUpdate(final Activity act, final String version,
+                                        final String desc, final Bitmap img, final String ts) {
         try {
+            Context ctx = (act != null) ? act : appContext;
+            if (ctx == null) return;
             NotificationManager nm =
                     (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;
 
-            /* Android 13+ runtime notification permission */
-            if (Build.VERSION.SDK_INT >= 33
-                    && ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                       != PackageManager.PERMISSION_GRANTED
-                    && ctx instanceof Activity) {
+            boolean enabled = true;
+            if (Build.VERSION.SDK_INT >= 24) enabled = nm.areNotificationsEnabled();
+
+            if (!enabled) {
+                if (act != null && Build.VERSION.SDK_INT >= 33) {
+                    if (!permRequested) {           // ask once per process
+                        permRequested = true;
+                        try {
+                            act.requestPermissions(
+                                    new String[]{"android.permission.POST_NOTIFICATIONS"}, BASE_NOTIF_ID);
+                        } catch (Throwable ignored) {}
+                    }
+                    retryNotify(act, version, desc, img, ts, 1);   // wait for user to Allow
+                }
+                return;
+            }
+            postNotification(ctx, nm, version, desc, img, ts);
+        } catch (Throwable ignored) {}
+    }
+
+    private static void retryNotify(final Activity act, final String version, final String desc,
+                                    final Bitmap img, final String ts, final int attempt) {
+        if (attempt > 4) return;
+        postDelayedMain(new Runnable() {
+            @Override public void run() {
                 try {
-                    ((Activity) ctx).requestPermissions(
-                            new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NOTIF_ID);
+                    Context ctx = (act != null) ? act : appContext;
+                    if (ctx == null) return;
+                    NotificationManager nm = (NotificationManager)
+                            ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+                    if (nm == null) return;
+                    boolean enabled = Build.VERSION.SDK_INT < 24 || nm.areNotificationsEnabled();
+                    if (enabled) postNotification(ctx, nm, version, desc, img, ts);
+                    else retryNotify(act, version, desc, img, ts, attempt + 1);
                 } catch (Throwable ignored) {}
             }
+        }, 1200L * attempt);
+    }
 
-            String text  = (desc == null || desc.trim().isEmpty())
+    private static void postNotification(Context ctx, NotificationManager nm, String version,
+                                         String desc, Bitmap img, String ts) {
+        try {
+            String text = (desc == null || desc.trim().isEmpty())
                     ? "A new version is ready — update now!" : desc.trim();
             String title = "New Update"
                     + ((version == null || version.trim().isEmpty()) ? "" : " • v" + version.trim());
 
-            Notification.Builder b;
+            /* use the HOST APP's own icon as the small icon */
+            int smallIcon = android.R.drawable.stat_notify_more;
+            try {
+                ApplicationInfo ai = ctx.getApplicationInfo();
+                if (ai != null && ai.icon != 0) smallIcon = ai.icon;
+            } catch (Throwable ignored) {}
+
             if (Build.VERSION.SDK_INT >= 26) {
-                NotificationChannel ch = new NotificationChannel(
-                        "TENIx_Update_Channel", "App Updates", NotificationManager.IMPORTANCE_HIGH);
+                NotificationChannel ch = new NotificationChannel("TENIx_Update_Channel",
+                        "App Updates", NotificationManager.IMPORTANCE_HIGH);
+                ch.setDescription("Update alerts from TENIx MODs");
                 ch.enableLights(true);
                 ch.setLightColor(PURPLE);
                 ch.enableVibration(true);
                 nm.createNotificationChannel(ch);
-                b = new Notification.Builder(ctx, "TENIx_Update_Channel");
-            } else {
-                b = new Notification.Builder(ctx);
             }
 
-            b.setSmallIcon(android.R.drawable.stat_notify_more)
+            Notification.Builder b = (Build.VERSION.SDK_INT >= 26)
+                    ? new Notification.Builder(ctx, "TENIx_Update_Channel")
+                    : new Notification.Builder(ctx);
+
+            b.setSmallIcon(smallIcon)
              .setContentTitle(title)
              .setContentText(text)
              .setAutoCancel(true);
 
             if (img != null) {
+                try { b.setLargeIcon(Bitmap.createScaledBitmap(img, 128, 128, true)); }
+                catch (Throwable ignored) {}
                 b.setStyle(new Notification.BigPictureStyle()
                         .bigPicture(img)
+                        .bigLargeIcon((Bitmap) null)
                         .setBigContentTitle(title)
                         .setSummaryText(text));
             } else {
                 b.setStyle(new Notification.BigTextStyle().bigText(text));
             }
 
-            nm.notify(NOTIF_ID, b.build());
-        } catch (Throwable t) {
-            /* permission denied — dialog still shows, never crash */
-        }
+            /* UNIQUE ID per update → every CALL UPDATE shows a new notification */
+            int nid = BASE_NOTIF_ID + (Math.abs(ts.hashCode()) % 50000);
+            nm.notify(nid, b.build());
+        } catch (Throwable ignored) {}
     }
 
-    /* =======================================================================
-       DIALOG UI — 320×360, radius 28, exact element positions from the spec
-       ======================================================================= */
+    /* ===================== dialog UI (same premium spec) ===================== */
+
     private static void showUpdateDialog(final Activity act, String version, String date,
                                          String desc, String features, final String updateUrl) {
         if (dialogShowing) return;
@@ -212,15 +318,15 @@ public class UpdateDialogbox {
 
         GradientDrawable cardBg = new GradientDrawable();
         cardBg.setColor(bg);
-        cardBg.setCornerRadius(dp(act, 28));                 // corner radius 28
-        cardBg.setStroke(dp(act, 2), PURPLE);                // purple border
+        cardBg.setCornerRadius(dp(act, 28));
+        cardBg.setStroke(dp(act, 2), PURPLE);
 
         LinearLayout root = new LinearLayout(act);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackground(cardBg);
-        root.setMinimumHeight(dp(act, 360));                 // dialog size: 320 × 360
+        root.setMinimumHeight(dp(act, 360));
 
-        /* ---------- 1. HEADER : "New Update" (top-left) + logo (top-right) ---------- */
+        /* header: New Update + logo */
         LinearLayout header = new LinearLayout(act);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -237,7 +343,7 @@ public class UpdateDialogbox {
         FrameLayout logoSlot = new FrameLayout(act);
         GradientDrawable slotBg = new GradientDrawable();
         slotBg.setColor((PURPLE & 0x00FFFFFF) | 0x1A000000);
-        slotBg.setCornerRadius(dp(act, 14));                 // rounded-square icon
+        slotBg.setCornerRadius(dp(act, 14));
         slotBg.setStroke(dp(act, 1), (PURPLE & 0x00FFFFFF) | 0x40000000);
         logoSlot.setBackground(slotBg);
         logoSlot.addView(makeLogoView(act, loadLogo(act)),
@@ -247,49 +353,45 @@ public class UpdateDialogbox {
         root.addView(header, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        /* ---------- 2. VERSION ---------- */
+        /* version */
         TextView v = new TextView(act);
-        v.setText((version == null || version.trim().isEmpty())
-                ? "Version —" : "Version " + version.trim());
+        v.setText((version == null || version.isEmpty()) ? "Version —" : "Version " + version);
         v.setTextColor(text);
         v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         v.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(v, sectionLabel(v, 14));
+        root.addView(v, sectionLabel(act, 14));
 
-        /* ---------- 3. RELEASE DATE ---------- */
+        /* release date */
         TextView d = new TextView(act);
-        d.setText((date == null || date.trim().isEmpty())
-                ? "Release —" : "Release " + date.trim());
+        d.setText((date == null || date.isEmpty()) ? "Release —" : "Release " + date);
         d.setTextColor(sub);
         d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        root.addView(d, sectionLabel(d, 8));
+        root.addView(d, sectionLabel(act, 8));
 
-        /* ---------- 4. DIVIDER ---------- */
+        /* divider */
         View divider = new View(act);
         divider.setBackgroundColor(line);
         LinearLayout.LayoutParams dvp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(act, 1));
-        dvp.leftMargin  = dp(act, 16);
-        dvp.rightMargin = dp(act, 16);
-        dvp.topMargin   = dp(act, 14);
+        dvp.leftMargin = dp(act, 16); dvp.rightMargin = dp(act, 16); dvp.topMargin = dp(act, 14);
         root.addView(divider, dvp);
 
-        /* ---------- 5. WHAT'S NEW ---------- */
+        /* what's new */
         TextView wn = new TextView(act);
         wn.setText("What's New");
         wn.setTextColor(text);
         wn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         wn.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(wn, sectionLabel(wn, 14));
+        root.addView(wn, sectionLabel(act, 14));
 
-        /* ---------- 6. FEATURE LIST (scrollable, purple ✦ bullets) ---------- */
+        /* feature list */
         LinearLayout list = new LinearLayout(act);
         list.setOrientation(LinearLayout.VERTICAL);
         int count = 0;
-        if (features != null && !features.trim().isEmpty()) {
+        if (features != null && !features.isEmpty()) {
             String[] lines = features.split("\n");
-            for (String rawLine : lines) {
-                String l = rawLine.trim();
+            for (String raw : lines) {
+                String l = raw.trim();
                 if (l.startsWith("✦")) l = l.substring(1).trim();
                 if (l.isEmpty()) continue;
                 list.addView(featureRow(act, l, text));
@@ -297,8 +399,7 @@ public class UpdateDialogbox {
             }
         }
         if (count == 0) {
-            String fb = (desc != null && !desc.trim().isEmpty())
-                    ? desc.trim() : "Bug fixes and improvements";
+            String fb = (desc != null && !desc.isEmpty()) ? desc : "Bug fixes and improvements";
             list.addView(featureRow(act, fb, text));
         }
         ScrollView scroller = new ScrollView(act);
@@ -307,12 +408,10 @@ public class UpdateDialogbox {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        slp.leftMargin  = dp(act, 16);
-        slp.rightMargin = dp(act, 16);
-        slp.topMargin   = dp(act, 6);
+        slp.leftMargin = dp(act, 16); slp.rightMargin = dp(act, 16); slp.topMargin = dp(act, 6);
         root.addView(scroller, slp);
 
-        /* ---------- 7. BUTTONS : EXIT (bottom-left) + UPDATE (bottom-right) ---------- */
+        /* buttons */
         LinearLayout row = new LinearLayout(act);
         row.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -325,10 +424,8 @@ public class UpdateDialogbox {
 
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        blp.leftMargin   = dp(act, 16);
-        blp.rightMargin  = dp(act, 16);
-        blp.topMargin    = dp(act, 14);
-        blp.bottomMargin = dp(act, 20);
+        blp.leftMargin = dp(act, 16); blp.rightMargin = dp(act, 16);
+        blp.topMargin = dp(act, 14);  blp.bottomMargin = dp(act, 20);
         root.addView(row, blp);
 
         exitB.setOnClickListener(new View.OnClickListener() {
@@ -348,7 +445,6 @@ public class UpdateDialogbox {
             }
         });
 
-        /* ---------- show dialog ---------- */
         Dialog dialog = new Dialog(act);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setCancelable(false);
@@ -360,7 +456,7 @@ public class UpdateDialogbox {
         Window w = dialog.getWindow();
         if (w != null) {
             w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            w.setLayout(dp(act, 320), dp(act, 360));       // exact 320 × 360, centered
+            w.setLayout(dp(act, 320), dp(act, 360));
             w.setGravity(Gravity.CENTER);
         }
         dialog.show();
@@ -368,12 +464,10 @@ public class UpdateDialogbox {
 
     /* ============================ helpers ============================ */
 
-    private static LinearLayout.LayoutParams sectionLabel(TextView tv, int topMargin) {
+    private static LinearLayout.LayoutParams sectionLabel(Activity a, int topMargin) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.leftMargin  = dp(tv.getContext(), 16);
-        lp.rightMargin = dp(tv.getContext(), 16);
-        lp.topMargin   = dp(tv.getContext(), topMargin);
+        lp.leftMargin = dp(a, 16); lp.rightMargin = dp(a, 16); lp.topMargin = dp(a, topMargin);
         return lp;
     }
 
@@ -404,15 +498,9 @@ public class UpdateDialogbox {
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         b.setTypeface(Typeface.DEFAULT_BOLD);
         GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(a, 11));                        // button radius ~11
-        if (filled) {
-            g.setColor(PURPLE);
-            b.setTextColor(Color.WHITE);
-        } else {
-            g.setColor(Color.TRANSPARENT);
-            g.setStroke(dp(a, 2), PURPLE);
-            b.setTextColor(PURPLE);
-        }
+        g.setCornerRadius(dp(a, 11));
+        if (filled) { g.setColor(PURPLE); b.setTextColor(Color.WHITE); }
+        else { g.setColor(Color.TRANSPARENT); g.setStroke(dp(a, 2), PURPLE); b.setTextColor(PURPLE); }
         b.setBackground(g);
         return b;
     }
@@ -444,9 +532,7 @@ public class UpdateDialogbox {
             Bitmap b = BitmapFactory.decodeStream(is);
             try { is.close(); } catch (Throwable ignored) {}
             return b;
-        } catch (Throwable t) {
-            return null;
-        }
+        } catch (Throwable t) { return null; }
     }
 
     private static Bitmap downloadBitmap(String urlStr) {
@@ -455,6 +541,7 @@ public class UpdateDialogbox {
             c.setConnectTimeout(8000);
             c.setReadTimeout(8000);
             c.setDoInput(true);
+            c.setRequestProperty("User-Agent", "Mozilla/5.0"); // some CDNs block empty UA
             int code = c.getResponseCode();
             if (code >= 400) { try { c.disconnect(); } catch (Throwable ignored) {} return null; }
             InputStream is = c.getInputStream();
@@ -462,9 +549,7 @@ public class UpdateDialogbox {
             try { is.close(); } catch (Throwable ignored) {}
             try { c.disconnect(); } catch (Throwable ignored) {}
             return b;
-        } catch (Throwable t) {
-            return null;
-        }
+        } catch (Throwable t) { return null; }
     }
 
     private static String readStream(InputStream is) {
@@ -476,9 +561,31 @@ public class UpdateDialogbox {
             while ((l = r.readLine()) != null) sb.append(l);
             try { is.close(); } catch (Throwable ignored) {}
             return sb.toString();
-        } catch (Throwable t) {
-            return null;
-        }
+        } catch (Throwable t) { return null; }
+    }
+
+    private static String getPref(String k, String def) {
+        try {
+            if (appContext == null) return def;
+            SharedPreferences sp = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            return sp.getString(k + "_" + appContext.getPackageName(), def);
+        } catch (Throwable t) { return def; }
+    }
+
+    private static void setPref(String k, String v) {
+        try {
+            if (appContext == null) return;
+            appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit().putString(k + "_" + appContext.getPackageName(), v).apply();
+        } catch (Throwable ignored) {}
+    }
+
+    private static void postToMain(Runnable r) {
+        try { new Handler(Looper.getMainLooper()).post(r); } catch (Throwable ignored) {}
+    }
+
+    private static void postDelayedMain(Runnable r, long ms) {
+        try { new Handler(Looper.getMainLooper()).postDelayed(r, ms); } catch (Throwable ignored) {}
     }
 
     private static boolean isDarkMode(Activity a) {
@@ -494,9 +601,7 @@ public class UpdateDialogbox {
     private static void exitApp(final Activity a) {
         try { a.finishAffinity(); } catch (Throwable ignored) {}
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-            @Override public void run() {
-                android.os.Process.killProcess(android.os.Process.myPid());
-            }
+            @Override public void run() { android.os.Process.killProcess(android.os.Process.myPid()); }
         }, 200);
     }
 }
