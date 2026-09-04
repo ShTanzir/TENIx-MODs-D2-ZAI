@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    // NOTE: The 3 dialog classes live in package "com.TENIx.MODs"
+    // so the smali hook lines match exactly:
+    // Lcom/TENIx/MODs/OpenDialogbox;->show(Landroid/app/Activity;)V
+    namespace 'com.TENIx.MODs'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.TENIx.MODs.DialogDox.Z.ai"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug   // release APK is installable
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+// ZERO dependencies — pure Android SDK + Firebase REST API.
+// No google-services.json needed. No Firebase SDK. No XML layouts.
