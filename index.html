@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>TENIx MODs • Update Panel V2</title>
+<title>TENIx MODs • Update Panel V2.2</title>
+<link rel="icon" type="image/jpeg" href="https://i.ibb.co/fzntKsyy/955818720899064534.jpg"/>
+<link rel="apple-touch-icon" href="https://i.ibb.co/fzntKsyy/955818720899064534.jpg"/>
+<meta property="og:image" content="https://i.ibb.co/fzntKsyy/955818720899064534.jpg"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
 :root{--purple:#7C3AED;--purple2:#A78BFA;--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b}
@@ -16,7 +19,7 @@ input,select,textarea{font-family:inherit}
 /* ---------- header ---------- */
 header{position:sticky;top:0;z-index:30;background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
 .hleft{display:flex;align-items:center;gap:11px}
-.logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#7C3AED,#4c1d95);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#fff;flex:none}
+.logo{width:42px;height:42px;border-radius:13px;object-fit:cover;flex:none;box-shadow:0 3px 12px rgba(124,58,237,.4)}
 header h1{font-size:16px}header h1 span{color:var(--purple2)}
 .conn{font-size:11px;color:var(--sub);display:flex;align-items:center;gap:6px;margin-top:2px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--bad);display:inline-block}
@@ -39,7 +42,7 @@ label{font-size:11.5px;color:var(--sub);display:block;margin:10px 0 5px;font-wei
 input,textarea,select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:11px;color:var(--text);padding:11px 12px;font-size:14px;outline:none;transition:.15s}
 input:focus,textarea:focus,select:focus{border-color:var(--purple)}
 textarea{min-height:84px;resize:vertical;line-height:1.55}
-.btn{border:none;border-radius:11px;padding:11px 18px;font-size:13.5px;font-weight:700;color:#fff;background:var(--purple);transition:transform .1s,filter .15s}
+.btn{border:none;border-radius:11px;padding:11px 18px;font-size:13.5px;font-weight:700;color:#fff;background:var(--purple);transition:transform .1s,filter .15s;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .btn:active{transform:scale(.96)}
 .btn:hover{filter:brightness(1.12)}
 .btn.ghost{background:transparent;border:1.5px solid var(--purple);color:var(--purple2)}
@@ -53,6 +56,7 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 .badge.on{color:var(--ok);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08)}
 .badge.off{color:var(--bad);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)}
 .info{font-size:12.5px;color:var(--sub);line-height:1.65;background:var(--card2);border:1px dashed var(--line);border-radius:12px;padding:11px 13px;margin-top:12px}
+.info.warn{border-color:rgba(245,158,11,.45);color:var(--warn)}
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px;overflow-x:auto;white-space:pre;color:var(--purple2)}
 
 /* ---------- stats ---------- */
@@ -61,6 +65,16 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:14px;box-shadow:var(--shadow)}
 .stat .n{font-size:23px;font-weight:800;color:var(--purple2)}
 .stat .l{font-size:11px;color:var(--sub);margin-top:3px;font-weight:600}
+
+/* ---------- dashboard guide ---------- */
+.guide{position:relative}
+.gstep{display:flex;gap:13px;align-items:flex-start;padding:9px 0;position:relative}
+.gstep:not(:last-child):before{content:'';position:absolute;left:18px;top:52px;bottom:-6px;width:2px;background:var(--line)}
+.gnum{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;position:relative;z-index:1;box-shadow:0 4px 12px rgba(124,58,237,.35)}
+.gtxt{min-width:0}
+.gtxt b{display:block;font-size:13.5px;margin-top:2px}
+.gtxt span{font-size:12px;color:var(--sub);line-height:1.6;display:block;margin-top:3px}
+.gtxt b2{color:var(--purple2);font-weight:700}
 
 /* ---------- apps grid ---------- */
 .agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}
@@ -93,7 +107,7 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 .mock-dlg{background:var(--card);border:2px solid var(--purple);border-radius:18px;padding:14px;max-width:250px;margin:0 auto}
 .mock-dlg .hd{display:flex;justify-content:space-between;align-items:center}
 .mock-dlg .hd b{font-size:15px}
-.mock-dlg .lg{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--purple),#4c1d95);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.mock-dlg .lg{width:34px;height:34px;border-radius:9px;object-fit:cover;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;background:linear-gradient(135deg,var(--purple),#4c1d95)}
 .mock-dlg .v{font-size:11.5px;font-weight:700;margin-top:9px}
 .mock-dlg .dt{font-size:10.5px;color:var(--sub);margin-top:2px}
 .mock-dlg hr{border:none;border-top:1px solid var(--line);margin:9px 0}
@@ -109,6 +123,15 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 .mock-notif p{font-size:11px;color:var(--sub);margin-top:2px;line-height:1.45}
 .mock-big{width:100%;border-radius:9px;margin-top:9px;display:block}
 
+/* ---------- download card ---------- */
+.zipbox{display:flex;gap:12px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;flex-wrap:wrap}
+.zipic{width:52px;height:52px;border-radius:14px;object-fit:cover;flex:none;box-shadow:0 3px 12px rgba(124,58,237,.4)}
+.ziptxt{flex:1;min-width:150px}
+.ziptxt b{font-size:13.5px;display:block}
+.ziptxt span{font-size:11.5px;color:var(--sub);line-height:1.5;display:block;margin-top:2px}
+.zfiles{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.zfile{font-size:10.5px;font-family:ui-monospace,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 9px;color:var(--purple2)}
+
 /* ---------- sheet ---------- */
 .sheetwrap{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:none;align-items:flex-end;justify-content:center}
 .sheetwrap.open{display:flex}
@@ -123,7 +146,7 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 /* ---------- lock ---------- */
 #lock{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
 #lock.show{display:flex}
-#lock .llogo{width:74px;height:74px;border-radius:22px;background:linear-gradient(135deg,#7C3AED,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff}
+#lock .llogo{width:74px;height:74px;border-radius:22px;object-fit:cover;box-shadow:0 6px 26px rgba(124,58,237,.5)}
 #lock input{width:180px;text-align:center;letter-spacing:8px;font-size:20px}
 </style>
 </head>
@@ -131,7 +154,7 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 
 <!-- ============ PIN LOCK ============ -->
 <div id="lock">
-  <div class="llogo">T</div>
+  <img class="llogo" src="https://i.ibb.co/fzntKsyy/955818720899064534.jpg" alt="TENIx MODs"/>
   <div style="font-size:14px;font-weight:700">Enter Admin PIN</div>
   <input type="password" id="lockPin" maxlength="8" inputmode="numeric"/>
   <button class="btn" onclick="tryUnlock()">🔓 Unlock</button>
@@ -139,10 +162,10 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 
 <header>
   <div class="hleft">
-    <div class="logo">T</div>
+    <img class="logo" src="https://i.ibb.co/fzntKsyy/955818720899064534.jpg" alt="TENIx MODs"/>
     <div>
-      <h1>TENIx MODs <span>• Panel V2</span></h1>
-      <div class="conn"><span class="dot" id="connDot"></span><span id="pingTxt">connect…</span></div>
+      <h1>TENIx MODs <span>• Panel V2.2</span></h1>
+      <div class="conn"><span class="dot" id="connDot"></span><span id="pingTxt">connecting…</span></div>
     </div>
   </div>
   <button class="tbtn" id="themeBtn">🌗</button>
@@ -157,11 +180,44 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
       <div class="stat"><div class="n" id="stCalls">0</div><div class="l">🚀 Total Calls</div></div>
       <div class="stat"><div class="n" id="stLast" style="font-size:14px">—</div><div class="l">🕒 Last Call</div></div>
     </div>
+
+    <div class="card">
+      <h2 class="sec">⚡ Quick Start Guide</h2>
+      <div class="guide">
+        <div class="gstep">
+          <div class="gnum">🔥</div>
+          <div class="gtxt"><b>Step 1 — Connect Firebase</b>
+          <span>Go to <b2>Settings</b2> → enter your <b2>Database URL</b2> (+ optional Secret) → press <b2>💾 Save & Connect</b2>. The status dot at the top turns green 🟢 when connected.</span></div>
+        </div>
+        <div class="gstep">
+          <div class="gnum">📱</div>
+          <div class="gtxt"><b>Step 2 — Add an App</b>
+          <span>Open the <b2>Apps</b2> page → tap the <b2>＋</b2> FAB button (bottom-right) → enter the target app's <b2>Name + Package ID</b2> → Add. (Icon & About are optional.)</span></div>
+        </div>
+        <div class="gstep">
+          <div class="gnum">🪝</div>
+          <div class="gtxt"><b>Step 3 — Inject (once per target app)</b>
+          <span>Open <b2>Tools</b2> → copy the <b2>hook codes + permissions</b2> → use MT Manager to inject the dex into the target APK, place the hooks, then rebuild & sign.</span></div>
+        </div>
+        <div class="gstep">
+          <div class="gnum">📢</div>
+          <div class="gtxt"><b>Step 4 — Call Update</b>
+          <span><b2>Apps</b2> → open an app → tap <b2>🚀 UPDATE App</b2> → fill in version, date, update URL, notification image & features → press <b2>📢 CALL UPDATE</b2>.</span></div>
+        </div>
+        <div class="gstep">
+          <div class="gnum">✅</div>
+          <div class="gtxt"><b>Step 5 — Done!</b>
+          <span>Apps that are open receive the notification + Update Dialog within <b2>~15 seconds</b2>. Closed apps get it on next launch. <b2>Every press = a fresh notification.</b2></span></div>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn sm ghost" onclick="nav('settings')">⚙️ Settings</button>
+        <button class="btn sm ghost" onclick="nav('apps')">📱 Apps</button>
+        <button class="btn sm ghost" onclick="nav('tools')">🧰 Tools</button>
+      </div>
+    </div>
+
     <div class="card"><h2 class="sec">🕒 Recent Activity</h2><div id="recentList"><div class="info">No activity yet.</div></div></div>
-    <div class="card"><h2 class="sec">⚡ Quick Guide</h2><div class="info">
-      1️⃣ Settings → save <b>Firebase URL</b> &nbsp;•&nbsp; 2️⃣ Apps → <b>+ add app</b> &nbsp;•&nbsp;
-      3️⃣ open app → <b>UPDATE</b> → fill → <b>📢 CALL UPDATE</b><br>
-      Injected apps check every <b>15s</b> while running → notification + dialog appear <b>instantly</b>.</div></div>
   </section>
 
   <!-- ============ APPS ============ -->
@@ -198,12 +254,12 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
       <div class="grid2">
         <div><label>Version *</label><input id="uVersion" placeholder="1.0.5"/></div>
         <div><label>Release Date *</label><input type="date" id="uDate"/></div>
-        <div><label>UPDATE URL (must) *</label><input id="uLink" placeholder="https://…"/></div>
+        <div><label>UPDATE URL (required) *</label><input id="uLink" placeholder="https://…"/></div>
         <div><label>Notification Image URL</label><input id="uImg" placeholder="https://…/banner.png (https!)"/></div>
       </div>
       <label>Short Description (notification text)</label>
       <textarea id="uDesc" placeholder="A big update is here — faster, smoother, better."></textarea>
-      <label>Features — one per line (✦ auto-added)</label>
+      <label>Features — one per line (✦ added automatically)</label>
       <textarea id="uFeat" placeholder="Added new features&#10;Bug fixes and improvements"></textarea>
       <div class="row">
         <button class="btn green" onclick="callUpdate()">📢 CALL UPDATE</button>
@@ -247,6 +303,24 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 }</div>
       <div class="row"><button class="btn sm" onclick="copyEl('c4')">📋 Copy Rules</button></div>
     </div>
+
+    <div class="card"><h2 class="sec">⬇️ Download Injection Files</h2>
+      <div class="zipbox">
+        <img class="zipic" src="https://i.ibb.co/fzntKsyy/955818720899064534.jpg" alt="ZIP"/>
+        <div class="ziptxt">
+          <b>TENIxMODsD2ZAI.zip</b>
+          <span>Ready-to-use dex files + instruction files — for direct injection.</span>
+          <div class="zfiles">
+            <span class="zfile">classes.dex</span>
+            <span class="zfile">Instruction.txt</span>
+            <span class="zfile">logo.png</span>
+          </div>
+        </div>
+        <button class="btn" onclick="downloadZip()">⬇ Download ZIP</button>
+      </div>
+      <div class="info">⚠️ The ZIP file must be placed in the <b>same folder (root) as this index.html</b> — then the download button will work.</div>
+    </div>
+
     <div class="card"><h2 class="sec">🧬 Dex Strings Checklist</h2>
       <div class="info">
       • <b>REPLACE_FIREBASE_REALTIME_DB_URL</b> → your DB URL<br>
@@ -259,7 +333,7 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
   <section class="page" id="p-settings">
     <div class="card"><h2 class="sec">🔥 Firebase Connection</h2>
       <label>Realtime Database URL</label><input id="sUrl" placeholder="https://your-db.firebaseio.com/"/>
-      <label>Database Secret (optional)</label><input id="sSec" placeholder="empty if rules are public"/>
+      <label>Database Secret (optional)</label><input id="sSec" placeholder="leave empty if rules are public"/>
       <div class="row"><button class="btn" onclick="saveConn()">💾 Save & Connect</button></div>
     </div>
     <div class="card"><h2 class="sec">🔄 Live Auto-Refresh</h2>
@@ -301,6 +375,7 @@ textarea{min-height:84px;resize:vertical;line-height:1.55}
 
 <script>
 /* ==================== state ==================== */
+const LOGO='https://i.ibb.co/fzntKsyy/955818720899064534.jpg';
 const LSK='tenix_v2_cfg';
 let CFG={url:'',secret:'',pin:'',auto:15,theme:'dark'};
 let APPS={}, CURRENT=null, TIMER=null;
@@ -309,6 +384,7 @@ function $id(x){return document.getElementById(x)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(m){const t=$id('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600)}
 function key(p){return String(p||'').trim().replace(/\./g,'_')}
+function validPkg(p){return /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(p)}
 function sheetOpen(){return $id('sheetWrap').classList.contains('open')}
 function fmtDate(v){if(!v)return'';const d=new Date(v+'T00:00:00');return isNaN(d)?v:d.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}
 function timeAgo(ts){if(!ts)return'—';const m=Math.floor((Date.now()-Number(ts))/60000);if(m<1)return'just now';if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
@@ -410,12 +486,14 @@ function addAppSheet(){
   '<label>Package ID *</label><input id="aPkg" placeholder="com.example.app"/>'+
   '<label>Short About</label><input id="aAbout"/>'+
   '<label>Icon URL</label><input id="aIcon" placeholder="https://…/icon.png"/>'+
+  '<div class="info">📌 The Package ID must be the <b>exact package name</b> of the target app — otherwise the injected app will not find its update data.</div>'+
   '<div class="row"><button class="btn" onclick="saveNewApp()">✔ Add App</button>'+
   '<button class="btn ghost" onclick="closeSheet()">Cancel</button></div>');
 }
 async function saveNewApp(){
   const n=$id('aName').value.trim(),p=$id('aPkg').value.trim();
   if(!n||!p){toast('⚠️ Name & package required');return}
+  if(!validPkg(p)){toast('⚠️ Format: com.example.app');return}
   const k=key(p);
   if(APPS[k]){toast('❌ App already exists');return}
   try{await api('apps/'+k+'.json','PUT',{appName:n,packageId:p,about:$id('aAbout').value.trim(),
@@ -426,15 +504,34 @@ function editAppSheet(){
   const a=APPS[CURRENT]||{};
   openSheet('<h2 class="sec">✏️ Edit App</h2>'+
   '<label>App Name</label><input id="eName" value="'+esc(a.appName||'')+'"/>'+
+  '<label>Package ID *</label><input id="ePkg" value="'+esc(a.packageId||'')+'"/>'+
   '<label>Short About</label><input id="eAbout" value="'+esc(a.about||'')+'"/>'+
   '<label>Icon URL</label><input id="eIcon" value="'+esc(a.iconUrl||'')+'"/>'+
-  '<div class="row"><button class="btn" onclick="saveEdit()">✔ Save</button>'+
+  '<div class="info warn">⚠️ Changing the <b>Package ID</b> will move this app to a new package key (update data + history included). The new ID must match the target app\'s package name.</div>'+
+  '<div class="row"><button class="btn" onclick="saveEdit()">✔ Save Changes</button>'+
   '<button class="btn ghost" onclick="closeSheet()">Cancel</button></div>');
 }
 async function saveEdit(){
-  try{await api('apps/'+CURRENT+'.json','PATCH',{appName:$id('eName').value.trim(),
-    about:$id('eAbout').value.trim(),iconUrl:$id('eIcon').value.trim()});
-    closeSheet();toast('✅ Saved');loadApps()}catch(e){toast('❌ '+e.message)}
+  const n=$id('eName').value.trim(), p=$id('ePkg').value.trim();
+  const about=$id('eAbout').value.trim(), icon=$id('eIcon').value.trim();
+  if(!n||!p){toast('⚠️ Name & package required');return}
+  if(!validPkg(p)){toast('⚠️ Format: com.example.app');return}
+  const newKey=key(p);
+  try{
+    if(newKey===CURRENT){
+      await api('apps/'+CURRENT+'.json','PATCH',{appName:n,packageId:p,about:about,iconUrl:icon,updatedAt:new Date().toISOString()});
+    }else{
+      if(APPS[newKey]){toast('❌ "'+p+'" already exists');return}
+      const data=JSON.parse(JSON.stringify(APPS[CURRENT]||{}));
+      data.packageId=p;data.appName=n;data.about=about;data.iconUrl=icon;
+      data.updatedAt=new Date().toISOString();
+      await api('apps/'+newKey+'.json','PUT',data);
+      await api('apps/'+CURRENT+'.json','DELETE');
+      delete APPS[CURRENT];APPS[newKey]=data;CURRENT=newKey;
+    }
+    closeSheet();toast('✅ Saved');await loadApps(true);
+    if(APPS[CURRENT])openDetail(CURRENT);
+  }catch(e){toast('❌ '+e.message)}
 }
 function dupAppSheet(){
   openSheet('<h2 class="sec">📄 Duplicate App</h2>'+
@@ -444,6 +541,7 @@ function dupAppSheet(){
 }
 async function saveDup(){
   const p=$id('dPkg').value.trim();if(!p){toast('⚠️ Package required');return}
+  if(!validPkg(p)){toast('⚠️ Format: com.example.app');return}
   const nk=key(p);if(APPS[nk]){toast('❌ Already exists');return}
   const src=JSON.parse(JSON.stringify(APPS[CURRENT]||{}));
   src.packageId=p;src.duplicatedFrom=CURRENT;src.update={active:false};delete src.history;
@@ -498,11 +596,11 @@ function renderPreview(){
   const d=formData();const a=APPS[CURRENT]||{};
   let fl='';d.feat.slice(0,4).forEach(f=>fl+='<div class="f"><i>✦</i> '+esc(f)+'</div>');
   if(!fl)fl='<div class="f"><i>✦</i> '+(esc(d.desc)||'Bug fixes and improvements')+'</div>';
-  $id('pvDialog').innerHTML='<div class="mock-dlg"><div class="hd"><b>New Update</b><div class="lg">T</div></div>'+
+  $id('pvDialog').innerHTML='<div class="mock-dlg"><div class="hd"><b>New Update</b><img class="lg" src="'+LOGO+'" onerror="this.style.display=\'none\'"></div>'+
     '<div class="v">Version '+esc(d.version)+'</div><div class="dt">Release '+esc(fmtDate(d.date)||'—')+'</div><hr>'+
     '<div class="wn">What\'s New</div>'+fl+
     '<div class="bts"><span>EXIT</span><span class="up">UPDATE</span></div></div>';
-  $id('pvNotif').innerHTML='<div class="mock-notif">'+(a.iconUrl?'<img src="'+esc(a.iconUrl)+'">':'<div class="ph"></div>')+
+  $id('pvNotif').innerHTML='<div class="mock-notif"><img src="'+LOGO+'" onerror="this.style.display=\'none\'">'+
     '<div style="min-width:0"><b>New Update • v'+esc(d.version)+'</b><p>'+esc(d.desc||'A new version is ready — update now!')+'</p></div></div>'+
     (d.img?'<img class="mock-big" src="'+esc(d.img)+'" onerror="this.style.display=\'none\'">':'');
 }
@@ -527,7 +625,17 @@ async function stopUpdate(){
   catch(e){toast('❌ '+e.message)}
 }
 
-/* ==================== tools / settings ==================== */
+/* ==================== tools / download / settings ==================== */
+async function downloadZip(){
+  try{
+    const r=await fetch('TENIxMODsD2ZAI.zip',{method:'HEAD'});
+    if(!r.ok)throw 0;
+    const a=document.createElement('a');
+    a.href='TENIxMODsD2ZAI.zip';a.download='TENIxMODsD2ZAI.zip';
+    document.body.appendChild(a);a.click();a.remove();
+    toast('⬇ Download started');
+  }catch(e){toast('❌ TENIxMODsD2ZAI.zip not found in root folder')}
+}
 function copyEl(id){
   const t=$id(id).textContent;
   if(navigator.clipboard){navigator.clipboard.writeText(t).then(()=>toast('📋 Copied')).catch(()=>fallbackCopy(t))}
