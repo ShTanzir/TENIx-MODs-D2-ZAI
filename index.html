@@ -398,12 +398,16 @@ function applyTheme(){document.body.className=CFG.theme==='light'?'light':'dark'
 function authQ(){return CFG.secret?'?auth='+encodeURIComponent(CFG.secret):''}
 async function api(path,method,body){
   if(!CFG.url)throw new Error('Set Firebase URL in Settings');
-  let u=CFG.url+path+(path.includes('?')?'&':'?')+authQ().replace('?','&');
-  if(!CFG.secret)u=CFG.url+path;
+  let u=CFG.url+path;
+  if(CFG.secret)u+=(path.includes('?')?'&':'?')+'auth='+encodeURIComponent(CFG.secret);
   const opt={method:method||'GET'};
   if(body!==undefined){opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body)}
   const r=await fetch(u,opt);
-  if(!r.ok)throw new Error('Firebase error '+r.status);
+  if(!r.ok){
+    if(r.status===401)throw new Error('401 WRITE BLOCKED — set Database Secret in Settings (rules: .write auth != null)');
+    if(r.status===403)throw new Error('403 — Firebase rules denied. Check your database rules.');
+    throw new Error('Firebase error '+r.status);
+  }
   return r.json();
 }
 
@@ -613,9 +617,11 @@ async function callUpdate(){
     features:d.feat.join('\n'),updateUrl:d.link,imageUrl:d.img,calledAt:calledAt};
   try{
     await api('apps/'+CURRENT+'/update.json','PUT',up);
-    await api('apps/'+CURRENT+'/history.json','POST',
-      {calledAt:calledAt,version:d.version,releaseDate:fmtDate(d.date),description:d.desc});
-    toast('📢 UPDATE called! Devices get it within ~15s');
+    const chk=await api('apps/'+CURRENT+'/update/active.json','GET');
+    if(chk!==true){toast('⚠️ Write not verified — check Firebase rules/secret');return}
+    api('apps/'+CURRENT+'/history.json','POST',
+      {calledAt:calledAt,version:d.version,releaseDate:fmtDate(d.date),description:d.desc}).catch(()=>{});
+    toast('📢 UPDATE verified & sent! Devices get it within ~15s');
     loadApps();setTimeout(()=>{if(APPS[CURRENT])openDetail(CURRENT)},600);
   }catch(e){toast('❌ '+e.message)}
 }
