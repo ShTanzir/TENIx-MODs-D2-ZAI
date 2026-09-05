@@ -47,18 +47,20 @@ import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Iterator;
 
 /**
- * TENIx MODs — UPDATE DIALOG BOX (V2)
+ * TENIx MODs — UPDATE DIALOG BOX (V3)
  *
- * V2 ENGINE:
- *  1. Instant check on every app launch (hook).
- *  2. LIVE POLLING every 15s while the app process is alive → admin presses
- *     "CALL UPDATE" → notification + dialog appear within seconds. NO restart needed.
- *  3. Every CALL UPDATE gets a fresh "calledAt" timestamp → EVERY press fires a
- *     NEW notification (unique ID) — fixes "worked 3 times then stopped".
- *  4. Notification image: forces HTTPS, downloads bitmap, sets LargeIcon +
- *     BigPictureStyle. Waits for Android 13 notification permission (4 retries).
+ * V3 FIXES:
+ *  1. SMART PACKAGE MATCH — tries apps/{pkg}.json first; if not found, downloads
+ *     full apps.json and matches by the "packageId" FIELD (case-insensitive).
+ *     Package-name/key mismatch between panel & injected app can no longer break it.
+ *  2. AUTH FALLBACK — if a request fails with the secret, it retries without auth
+ *     (works whether rules are public-read or secret-protected).
+ *  3. LOGCAT DEBUGGING — every step logs under tag "TENIxMODs" (adb logcat).
+ *  4. Instant check on every launch + 15s live polling while app is running.
+ *  5. Every CALL UPDATE (new calledAt) = fresh notification with unique ID.
  *
  * Hook: invoke-static {p0}, Lcom/TENIx/MODs/UpdateDialogbox;->show(Landroid/app/Activity;)V
  */
@@ -72,7 +74,8 @@ public class UpdateDialogbox {
     /* ========================================================================== */
 
     private static final int    PURPLE        = 0xFF7C3AED;
-    private static final long   POLL_MS       = 15000;   // live check every 15s
+    private static final long   POLL_MS       = 15000;
+    private static final long   FIRST_POLL_MS = 8000;
     private static final String PREFS         = "TENIx_MODS_UPDATES";
     private static final String KEY_NOTIFIED  = "last_notified_calledAt";
     private static final int    BASE_NOTIF_ID = 7331;
@@ -84,7 +87,6 @@ public class UpdateDialogbox {
     private static Handler pollHandler;
     private static boolean polling = false;
     private static boolean dialogShowing = false;
-    private static String  sessionDialogTs = "";
     private static boolean permRequested = false;
 
     /** HOOK ENTRY POINT */
@@ -92,15 +94,16 @@ public class UpdateDialogbox {
         if (activity == null || activity.isFinishing()) return;
         try { liveActivity = new WeakReference<Activity>(activity); } catch (Throwable ignored) {}
         try { appContext = activity.getApplicationContext(); } catch (Throwable ignored) {}
+        log("show() called — pkg=" + safePkg(activity));
         runCheck(activity);     // instant check on launch
         startPolling();         // live updates while app is running
     }
 
-    /* ===================== polling engine (V2) ===================== */
+    /* ===================== engine ===================== */
 
     private static void runCheck(final Activity act) {
         new Thread(new Runnable() {
-            @Override public void run() { try { checkNow(act); } catch (Throwable ignored) {} }
+            @Override public void run() { try { checkNow(act); } catch (Throwable t) { log("check err: " + t); } }
         }).start();
     }
 
@@ -108,7 +111,7 @@ public class UpdateDialogbox {
         synchronized (LOCK) {
             if (polling || appContext == null) return;
             String u = (FIREBASE_DB_URL == null) ? "" : FIREBASE_DB_URL.trim();
-            if (u.isEmpty() || u.contains("REPLACE_")) return;
+            if (u.isEmpty() || u.contains("REPLACE_")) { log("poll skipped — URL not configured"); return; }
             try {
                 pollThread = new HandlerThread("TENIx_Update_Poll");
                 pollThread.setPriority(Thread.MIN_PRIORITY);
@@ -121,87 +124,126 @@ public class UpdateDialogbox {
                         Handler h = pollHandler;
                         if (h != null) h.postDelayed(this, POLL_MS);
                     }
-                }, POLL_MS);
+                }, FIRST_POLL_MS);
+                log("polling started (every " + POLL_MS + "ms)");
             } catch (Throwable t) { polling = false; }
         }
     }
 
-    /* ===================== firebase check (REST) ===================== */
+    /* ===================== firebase check (V3 smart match) ===================== */
 
     private static void checkNow(final Activity actFromCall) {
         try {
             String base = (FIREBASE_DB_URL == null) ? "" : FIREBASE_DB_URL.trim();
-            if (base.isEmpty() || base.contains("REPLACE_")) return;
+            if (base.isEmpty() || base.contains("REPLACE_")) { log("URL not configured"); return; }
             if (!base.endsWith("/")) base = base + "/";
 
             Context ctx = (appContext != null) ? appContext : actFromCall;
             if (ctx == null) return;
-            String key = ctx.getPackageName().replace('.', '_');
-            String urlStr = base + "apps/" + key + ".json";
-
+            String pkg = ctx.getPackageName();
             String secret = (FIREBASE_DB_SECRET == null) ? "" : FIREBASE_DB_SECRET.trim();
-            if (!secret.isEmpty() && !secret.contains("REPLACE_")) {
-                urlStr = urlStr + "?auth=" + URLEncoder.encode(secret, "UTF-8");
-            }
+            if (secret.contains("REPLACE_")) secret = "";
 
-            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setConnectTimeout(7000);
-            conn.setReadTimeout(7000);
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("User-Agent", "TENIxMODs/2.0");
-            int code = conn.getResponseCode();
-            InputStream in = (code >= 400) ? conn.getErrorStream() : conn.getInputStream();
-            String body = readStream(in);
-            try { conn.disconnect(); } catch (Throwable ignored) {}
-
-            if (body == null || body.length() < 2 || "null".equals(body)) return;
-
-            JSONObject root = new JSONObject(body);
-            JSONObject up = root.optJSONObject("update");
-            if (up == null) up = root;
+            /* ---- V3: direct key first, then full scan by packageId field ---- */
+            JSONObject up = findUpdateObject(base, secret, pkg);
+            if (up == null) { log("no active update found for " + pkg); return; }
 
             boolean active = up.optBoolean("active", false) || up.optBoolean("updateActive", false);
-            if (!active) return;
+            if (!active) { log("update present but active=false"); return; }
 
             long calledAtL = up.optLong("calledAt", 0L);
-            final String ts = String.valueOf(calledAtL);
-
             final String version  = up.optString("version", "").trim();
             final String date     = up.optString("releaseDate", up.optString("date", "")).trim();
             final String desc     = up.optString("description", "").trim();
             final String features = up.optString("features", "").trim();
             final String link     = up.optString("updateUrl", up.optString("url", "")).trim();
 
+            /* unique marker per CALL UPDATE — falls back to content hash if calledAt missing */
+            final String ts = (calledAtL > 0)
+                    ? String.valueOf(calledAtL)
+                    : String.valueOf((version + "|" + date + "|" + desc + "|" + features + "|" + link).hashCode());
+
             String imgUrl = up.optString("imageUrl", "").trim();
-            if (imgUrl.startsWith("http://")) imgUrl = "https://" + imgUrl.substring(7); // FIX: cleartext block
+            if (imgUrl.startsWith("http://")) imgUrl = "https://" + imgUrl.substring(7);
             final Bitmap img = imgUrl.isEmpty() ? null : downloadBitmap(imgUrl);
 
             final boolean isNewUpdate = !ts.equals(getPref(KEY_NOTIFIED, ""));
+            log("update FOUND — v" + version + " new=" + isNewUpdate + " img=" + (img != null));
 
             postToMain(new Runnable() {
                 @Override public void run() {
                     try {
                         Activity a = (actFromCall != null) ? actFromCall : liveActivity.get();
 
-                        /* NOTIFICATION — only for NEW calledAt (every CALL UPDATE press) */
+                        /* NOTIFICATION — one per CALL UPDATE press */
                         if (isNewUpdate) {
                             notifyNewUpdate(a, version, desc, img, ts);
                             setPref(KEY_NOTIFIED, ts);
                         }
 
-                        /* DIALOG — every launch while active; once per calledAt per session */
-                        if (a != null && !a.isFinishing() && !a.isDestroyed()
-                                && !dialogShowing && !sessionDialogTs.equals(ts)) {
-                            sessionDialogTs = ts;
+                        /* DIALOG — every launch while update is active */
+                        if (a != null && !a.isFinishing() && !a.isDestroyed() && !dialogShowing) {
+                            log("showing update dialog");
                             showUpdateDialog(a, version, date, desc, features, link);
                         }
-                    } catch (Throwable ignored) {}
+                    } catch (Throwable t) { log("main-post err: " + t); }
                 }
             });
-        } catch (Throwable t) { /* never crash the host app */ }
+        } catch (Throwable t) { log("checkNow err: " + t); }
     }
 
-    /* ===================== notification (V2: permission-aware + image) ===================== */
+    /**
+     * V3 SMART MATCH:
+     *  1) apps/{pkg_sanitized}.json  (com.a.b -> com_a_b)
+     *  2) full apps.json scan → matches node whose "packageId" field == real package
+     */
+    private static JSONObject findUpdateObject(String base, String secret, String pkg) {
+        String safeKey = pkg.replace('.', '_');
+        JSONObject node = getJson(base, "apps/" + safeKey + ".json", secret);
+        if (node != null) {
+            log("direct key hit: apps/" + safeKey);
+            JSONObject up = node.optJSONObject("update");
+            if (up != null) return up;
+            if (node.has("active")) return node;   // flat structure support
+        } else {
+            log("direct key miss: apps/" + safeKey + " — falling back to full scan");
+        }
+
+        JSONObject all = getJson(base, "apps.json", secret);
+        if (all != null) {
+            try {
+                Iterator<String> it = all.keys();
+                while (it.hasNext()) {
+                    JSONObject app = all.optJSONObject(it.next());
+                    if (app == null) continue;
+                    String pid = app.optString("packageId", "").trim();
+                    if (pid.equalsIgnoreCase(pkg)) {
+                        log("packageId field matched: " + pid);
+                        JSONObject up = app.optJSONObject("update");
+                        if (up != null) return up;
+                    }
+                }
+            } catch (Throwable t) { log("scan err: " + t); }
+        }
+        return null;
+    }
+
+    /** GET with auth fallback: tries WITH secret, then WITHOUT (covers both rule types). */
+    private static JSONObject getJson(String base, String path, String secret) {
+        String body = null;
+        try {
+            if (!secret.isEmpty()) {
+                body = httpGet(base + path + "?auth=" + URLEncoder.encode(secret, "UTF-8"));
+            }
+            if (body == null || body.length() < 2 || "null".equals(body)) {
+                body = httpGet(base + path);
+            }
+        } catch (Throwable t) { log("getJson err: " + t); }
+        if (body == null || body.length() < 2 || "null".equals(body)) return null;
+        try { return new JSONObject(body); } catch (Throwable t) { return null; }
+    }
+
+    /* ===================== notification ===================== */
 
     private static void notifyNewUpdate(final Activity act, final String version,
                                         final String desc, final Bitmap img, final String ts) {
@@ -214,22 +256,21 @@ public class UpdateDialogbox {
 
             boolean enabled = true;
             if (Build.VERSION.SDK_INT >= 24) enabled = nm.areNotificationsEnabled();
+            log("notification enabled=" + enabled);
 
             if (!enabled) {
-                if (act != null && Build.VERSION.SDK_INT >= 33) {
-                    if (!permRequested) {           // ask once per process
-                        permRequested = true;
-                        try {
-                            act.requestPermissions(
-                                    new String[]{"android.permission.POST_NOTIFICATIONS"}, BASE_NOTIF_ID);
-                        } catch (Throwable ignored) {}
-                    }
+                if (act != null && Build.VERSION.SDK_INT >= 33 && !permRequested) {
+                    permRequested = true;
+                    try {
+                        act.requestPermissions(
+                                new String[]{"android.permission.POST_NOTIFICATIONS"}, BASE_NOTIF_ID);
+                    } catch (Throwable ignored) {}
                     retryNotify(act, version, desc, img, ts, 1);   // wait for user to Allow
                 }
                 return;
             }
             postNotification(ctx, nm, version, desc, img, ts);
-        } catch (Throwable ignored) {}
+        } catch (Throwable t) { log("notify err: " + t); }
     }
 
     private static void retryNotify(final Activity act, final String version, final String desc,
@@ -259,7 +300,6 @@ public class UpdateDialogbox {
             String title = "New Update"
                     + ((version == null || version.trim().isEmpty()) ? "" : " • v" + version.trim());
 
-            /* use the HOST APP's own icon as the small icon */
             int smallIcon = android.R.drawable.stat_notify_more;
             try {
                 ApplicationInfo ai = ctx.getApplicationInfo();
@@ -297,10 +337,10 @@ public class UpdateDialogbox {
                 b.setStyle(new Notification.BigTextStyle().bigText(text));
             }
 
-            /* UNIQUE ID per update → every CALL UPDATE shows a new notification */
             int nid = BASE_NOTIF_ID + (Math.abs(ts.hashCode()) % 50000);
             nm.notify(nid, b.build());
-        } catch (Throwable ignored) {}
+            log("notification posted id=" + nid);
+        } catch (Throwable t) { log("postNotif err: " + t); }
     }
 
     /* ===================== dialog UI (same premium spec) ===================== */
@@ -326,7 +366,7 @@ public class UpdateDialogbox {
         root.setBackground(cardBg);
         root.setMinimumHeight(dp(act, 360));
 
-        /* header: New Update + logo */
+        /* header */
         LinearLayout header = new LinearLayout(act);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -459,7 +499,7 @@ public class UpdateDialogbox {
             w.setLayout(dp(act, 320), dp(act, 360));
             w.setGravity(Gravity.CENTER);
         }
-        dialog.show();
+        try { dialog.show(); } catch (Throwable t) { dialogShowing = false; log("dialog err: " + t); }
     }
 
     /* ============================ helpers ============================ */
@@ -541,7 +581,7 @@ public class UpdateDialogbox {
             c.setConnectTimeout(8000);
             c.setReadTimeout(8000);
             c.setDoInput(true);
-            c.setRequestProperty("User-Agent", "Mozilla/5.0"); // some CDNs block empty UA
+            c.setRequestProperty("User-Agent", "Mozilla/5.0");
             int code = c.getResponseCode();
             if (code >= 400) { try { c.disconnect(); } catch (Throwable ignored) {} return null; }
             InputStream is = c.getInputStream();
@@ -549,7 +589,23 @@ public class UpdateDialogbox {
             try { is.close(); } catch (Throwable ignored) {}
             try { c.disconnect(); } catch (Throwable ignored) {}
             return b;
-        } catch (Throwable t) { return null; }
+        } catch (Throwable t) { log("img err: " + t); return null; }
+    }
+
+    private static String httpGet(String urlStr) {
+        try {
+            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+            conn.setConnectTimeout(7000);
+            conn.setReadTimeout(7000);
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "TENIxMODs/3.0");
+            int code = conn.getResponseCode();
+            if (code >= 400) { log("GET " + code + " → " + urlStr); }
+            InputStream in = (code >= 400) ? conn.getErrorStream() : conn.getInputStream();
+            String body = readStream(in);
+            try { conn.disconnect(); } catch (Throwable ignored) {}
+            return body;
+        } catch (Throwable t) { log("httpGet err: " + t); return null; }
     }
 
     private static String readStream(InputStream is) {
@@ -567,17 +623,22 @@ public class UpdateDialogbox {
     private static String getPref(String k, String def) {
         try {
             if (appContext == null) return def;
-            SharedPreferences sp = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            return sp.getString(k + "_" + appContext.getPackageName(), def);
+            SharedPreferences sp = appContext.getSharedPreferences(
+                    PREFS + "_" + appContext.getPackageName(), Context.MODE_PRIVATE);
+            return sp.getString(k, def);
         } catch (Throwable t) { return def; }
     }
 
     private static void setPref(String k, String v) {
         try {
             if (appContext == null) return;
-            appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .edit().putString(k + "_" + appContext.getPackageName(), v).apply();
+            appContext.getSharedPreferences(PREFS + "_" + appContext.getPackageName(), Context.MODE_PRIVATE)
+                    .edit().putString(k, v).apply();
         } catch (Throwable ignored) {}
+    }
+
+    private static String safePkg(Context c) {
+        try { return c.getPackageName(); } catch (Throwable t) { return "?"; }
     }
 
     private static void postToMain(Runnable r) {
@@ -603,5 +664,9 @@ public class UpdateDialogbox {
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override public void run() { android.os.Process.killProcess(android.os.Process.myPid()); }
         }, 200);
+    }
+
+    private static void log(String m) {
+        try { android.util.Log.d("TENIxMODs", m); } catch (Throwable ignored) {}
     }
 }
