@@ -1,18 +1,16 @@
-name: Build & Release TENIx MODs D2 ZAI
+name: Build TENIx MODs D2 ZAI APK
 
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:          # manual run button
+  workflow_dispatch:
 
 jobs:
-  build-release:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write         # ← REQUIRED for creating GitHub Release
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -26,61 +24,25 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Check logo.png in assets
+      - name: Ensure logo.png exists in assets
         run: |
           mkdir -p app/src/main/assets
           if [ ! -f app/src/main/assets/logo.png ]; then
-            echo "⚠️ logo.png missing — app will use built-in fallback logo"
-          else
-            echo "✅ logo.png found in assets"
+            convert -size 192x192 xc:none \
+              -fill "#7C3AED" -draw "roundrectangle 10,10 182,182 42,42" \
+              -gravity center -pointsize 110 -fill white -annotate 0 "T" \
+              app/src/main/assets/logo.png && echo "placeholder logo created" \
+              || echo "logo skipped - app will use fallback logo"
           fi
 
       - name: Build APKs (Debug + Release)
         run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
 
-      - name: Collect & rename APKs
-        run: |
-          mkdir -p release_apks
-          cp app/build/outputs/apk/debug/app-debug.apk     release_apks/TENIx-MODs-D2-ZAI-debug.apk   || true
-          cp app/build/outputs/apk/release/app-release.apk release_apks/TENIx-MODs-D2-ZAI-release.apk || true
-          ls -la release_apks
-
-      - name: Upload Artifact (Actions page)
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: TENIx-MODs-D2-ZAI-APKs
-          path: release_apks/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
           if-no-files-found: error
-
-      # ================= GITHUB RELEASE =================
-      - name: Create GitHub Release & attach APKs
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: TENIx MODs D2 ZAI — v1.0.${{ github.run_number }}
-          body: |
-            ## 🚀 TENIx MODs D2 ZAI — New Build
-
-            | File | Use |
-            |------|-----|
-            | `TENIx-MODs-D2-ZAI-release.apk` | ✅ Recommended (sign + install) |
-            | `TENIx-MODs-D2-ZAI-debug.apk` | Testing only |
-
-            ### 📦 Build Info
-            - **Build #:** ${{ github.run_number }}
-            - **Commit:** ${{ github.sha }}
-            - **Date:** ${{ github.event.head_commit.timestamp }}
-
-            ### 🔧 After Download (MT Manager)
-            1. Extract `classes.dex` + `assets/logo.png`
-            2. Dex → strings → replace `REPLACE_FIREBASE_REALTIME_DB_URL`
-            3. Copy 2 hook lines from `MainActivity.smali`
-            4. Delete `MainActivity.smali` → inject dex into target APK
-            5. Add permissions + hooks → rebuild & sign
-
-            ---
-            🕸 [Telegram](https://t.me/TENIxMODs) • Admin Panel: `index.html`
-          files: release_apks/*.apk
-          make_latest: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
